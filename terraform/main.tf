@@ -59,18 +59,22 @@ resource "aws_instance" "linuxkit" {
 */
 
 # AutoScaling / Rollout Approach
-data "aws_ami" "most_recent_cyvive" {
-
+data "aws_ami" "most_recent_cyvive_controller" {
   most_recent = true
-
-  owners = ["self"] # Canonical
+  owners = ["self"]
+	name_regex = "cyvive-controller"
 }
+/*
+data "aws_ami" "most_recent_cyvive_pool" {
+  most_recent = true
+  owners = ["self"]
+	name_regex = "cyvive-pool"
+}
+*/
 
 resource "aws_launch_configuration" "sample_lc" {
-
-  image_id = "${data.aws_ami.most_recent_cyvive.id}"
-  instance_type = "t2.micro"
-
+  image_id = "${data.aws_ami.most_recent_cyvive_controller.id}"
+  instance_type = "c5.large"
   lifecycle {
     create_before_destroy = true
   }
@@ -86,12 +90,6 @@ variable "aws_instances" {
 	default = [""]
 }
 
-/*
-variable "rolling_update_asg_size" {
-	default = "${lookup(data.aws_instances.rolling_update_asg.outputs, "ids", "5")}"
-}
-*/
-
 /* Due both sides of conditional logic being checked in < v0.12 this must be pushed in externally
 data "aws_instances" "rolling_update_asg" {
 	count = "${var.rolling_update_asg != "0" ? 1 : 0}"
@@ -103,12 +101,10 @@ data "aws_instances" "rolling_update_asg" {
 
 variable "aws_cloudformation_stack" {
 	type = "map"
-
 	default = {
-		AvailabilityZones = "ap-southeast-2a,ap-southeast-2b"
 		VPCZoneIdentifier = "subnet-099a536c,subnet-4e29de39"
-		MaximumCapacity = "10"
-		MinimumCapacity = "2"
+		MaximumCapacity = "2"
+		MinimumCapacity = "0"
 		UpdatePauseTime = "PT5M"
 	}
 }
@@ -116,21 +112,67 @@ variable "aws_cloudformation_stack" {
 locals {
 	aws_cloudformation_stack = {
 		enabled = {
-			LaunchConfigurationName = "${aws_launch_configuration.sample_lc.name}" 
+			LaunchConfigurationName = "${aws_launch_configuration.sample_lc.name}"
 			MinInstancesInService = "${var.aws_cloudformation_stack["MaximumCapacity"] - 1}"
 		}
 		disabled = {
-			LaunchConfigurationName = "${aws_launch_configuration.sample_lc.name}" 
+			LaunchConfigurationName = "${aws_launch_configuration.sample_lc.name}"
 			MinInstancesInService = "${length(var.aws_instances) - 1}"
 			#MinInstancesInService = "${length(concat(data.aws_instances.*.ids, list(""))) - 1}"
 		}
 	}
 }
 
-resource "aws_cloudformation_stack" "rolling_update_asg" {
+variable "reset_placement_groups" {
+	default = "0"
+}
 
-	name = "asg-rolling-update"
-	parameters = "${merge("${var.aws_cloudformation_stack}", "${local.aws_cloudformation_stack["${var.rolling_update_asg == "0" ? "enabled" : "disabled" }"]}")}"
+resource "random_pet" "placement_cluster" {
+	count = "${length(data.aws_subnet_ids.selected.ids)}"
+	keepers = {
+		placement = "${var.reset_placement_groups}"
+	}
+	prefix = "cyvive-${substr(data.aws_subnet.selected.*.availability_zone[count.index], -2, -1)}"
+}
+
+variable "vpc_id" {}
+
+data "aws_vpc" "selected" {
+	id = "${var.vpc_id}"
+}
+
+data "aws_subnet_ids" "selected" {
+	vpc_id						= "${data.aws_vpc.selected.id}"
+}
+
+data "aws_subnet" "selected" {
+	count = "${length(data.aws_subnet_ids.selected.ids)}"
+	id		= "${data.aws_subnet_ids.selected.ids[count.index]}"
+}
+
+variable "availability_zones" {
+	default = {
+		"0" = "a"
+		"1" = "b"
+		"2" = "c"
+	}
+}
+# Find AZ from Subnet information
+
+resource "aws_placement_group" "cluster" {
+	count			= "${length(data.aws_subnet_ids.selected.ids)}"
+	name			= "${random_pet.placement_cluster.*.id[count.index]}"
+	strategy	= "cluster"
+}
+
+resource "aws_cloudformation_stack" "rolling_update_asg" {
+	count			= "${length(data.aws_subnet_ids.selected.ids)}"
+	name			= "${random_pet.placement_cluster.*.id[count.index]}-asg-rolling-update"
+	parameters = "${merge("${var.aws_cloudformation_stack}",
+									"${local.aws_cloudformation_stack["${var.rolling_update_asg == "0" ? "enabled" : "disabled" }"]}",
+									map("PlacementGroup", "${aws_placement_group.cluster.*.id[count.index]}",
+											"AvailabilityZones", "${data.aws_subnet.selected.*.availability_zone[count.index]}",
+											"VPCZoneIdentifier", "${data.aws_subnet.selected.*.id[count.index]}"))}"
   template_body = <<STACK
 {
   "Description": "ASG cloud formation template",
@@ -159,6 +201,10 @@ resource "aws_cloudformation_stack" "rolling_update_asg" {
       "Type": "String",
       "Description": "Minimum Number of Healthly Instances while Rolling Update Occurs"
     },
+    "PlacementGroup": {
+      "Type": "String",
+      "Description": "Name of PlacementGroup these instances belong to in this AZ"
+    },
     "UpdatePauseTime": {
       "Type": "String",
       "Description": "The pause time during rollout for the application"
@@ -169,25 +215,20 @@ resource "aws_cloudformation_stack" "rolling_update_asg" {
       "Type": "AWS::AutoScaling::AutoScalingGroup",
       "Properties": {
         "AvailabilityZones": { "Ref": "AvailabilityZones" },
+				"Cooldown": "0",
         "LaunchConfigurationName": { "Ref": "LaunchConfigurationName" },
         "MaxSize": { "Ref": "MaximumCapacity" },
         "MinSize": { "Ref": "MinimumCapacity" },
-        "DesiredCapacity": { "Ref": "MinimumCapacity" },
+				"PlacementGroup": { "Ref": "PlacementGroup" },
         "VPCZoneIdentifier": { "Ref": "VPCZoneIdentifier" },
         "TerminationPolicies": [ "OldestLaunchConfiguration", "OldestInstance" ],
-        "HealthCheckType": "ELB",
-        "MetricsCollection": [
-          {
-            "Granularity": "1Minute",
-            "Metrics": [ ]
-          }
-        ],
-        "HealthCheckGracePeriod": "300",
+        "HealthCheckType": "EC2",
+        "HealthCheckGracePeriod": "30",
         "Tags": [ ]
       },
       "UpdatePolicy": {
         "AutoScalingRollingUpdate": {
-          "MinInstancesInService": "2",
+					"MinInstancesInService": { "Ref": "MinInstancesInService" },
 					"WaitOnResourceSignals": "true",
           "MaxBatchSize": "1",
           "PauseTime": { "Ref": "UpdatePauseTime" }
