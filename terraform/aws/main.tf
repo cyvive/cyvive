@@ -1,9 +1,5 @@
-provider "aws" {
-  region = "ap-southeast-2"
-}
-
 data "template_file" "policy" {
-  template = "${file("files/policy.tpl")}"
+  template = "${file("templates/policy.tpl")}"
   vars {
     bucket = "${aws_s3_bucket.disk_image_bucket.id}"
   }
@@ -19,7 +15,7 @@ resource "aws_s3_bucket" "disk_image_bucket" {
 
 resource "aws_iam_role" "vmimport" {
   name               = "vmimport"
-  assume_role_policy = "${file("files/assume-role-policy.json")}"
+  assume_role_policy = "${file("templates/assume-role-policy.json")}"
 }
 
 
@@ -59,11 +55,6 @@ resource "aws_instance" "linuxkit" {
 */
 
 # AutoScaling / Rollout Approach
-data "aws_ami" "most_recent_cyvive_controller" {
-  most_recent = true
-  owners = ["self"]
-	name_regex = "cyvive-controller"
-}
 /*
 data "aws_ami" "most_recent_cyvive_pool" {
   most_recent = true
@@ -74,21 +65,12 @@ data "aws_ami" "most_recent_cyvive_pool" {
 
 resource "aws_launch_configuration" "sample_lc" {
   image_id = "${data.aws_ami.most_recent_cyvive_controller.id}"
-  instance_type = "c5.large"
+  instance_type = "${var.pool_type}"
   lifecycle {
     create_before_destroy = true
   }
 }
 
-# variable needs to be set initially to ensure that instance search returns truthy
-variable "rolling_update_asg" {
-	default = "0"
-}
-
-variable "aws_instances" {
-	type = "list"
-	default = [""]
-}
 
 /* Due both sides of conditional logic being checked in < v0.12 this must be pushed in externally
 data "aws_instances" "rolling_update_asg" {
@@ -102,8 +84,6 @@ data "aws_instances" "rolling_update_asg" {
 variable "aws_cloudformation_stack" {
 	type = "map"
 	default = {
-		VPCZoneIdentifier = "subnet-099a536c,subnet-4e29de39"
-		MaximumCapacity = "2"
 		MinimumCapacity = "0"
 		UpdatePauseTime = "PT5M"
 	}
@@ -112,10 +92,12 @@ variable "aws_cloudformation_stack" {
 locals {
 	aws_cloudformation_stack = {
 		enabled = {
+			MaximumCapacity = "${var.pool_maximum_size}"
 			LaunchConfigurationName = "${aws_launch_configuration.sample_lc.name}"
-			MinInstancesInService = "${var.aws_cloudformation_stack["MaximumCapacity"] - 1}"
+			MinInstancesInService = "${local.aws_cloudformation_stack["enabled.MaximumCapacity"] - 1}"
 		}
 		disabled = {
+			MaximumCapacity = "${var.pool_maximum_size}"
 			LaunchConfigurationName = "${aws_launch_configuration.sample_lc.name}"
 			MinInstancesInService = "${length(var.aws_instances) - 1}"
 			#MinInstancesInService = "${length(concat(data.aws_instances.*.ids, list(""))) - 1}"
@@ -123,19 +105,14 @@ locals {
 	}
 }
 
-variable "reset_placement_groups" {
-	default = "0"
-}
-
 resource "random_pet" "placement_cluster" {
 	count = "${length(data.aws_subnet_ids.selected.ids)}"
 	keepers = {
-		placement = "${var.reset_placement_groups}"
+		placement = "${var.rename_placement_groups}"
 	}
 	prefix = "cyvive-${substr(data.aws_subnet.selected.*.availability_zone[count.index], -2, -1)}"
 }
 
-variable "vpc_id" {}
 
 data "aws_vpc" "selected" {
 	id = "${var.vpc_id}"
@@ -149,15 +126,6 @@ data "aws_subnet" "selected" {
 	count = "${length(data.aws_subnet_ids.selected.ids)}"
 	id		= "${data.aws_subnet_ids.selected.ids[count.index]}"
 }
-
-variable "availability_zones" {
-	default = {
-		"0" = "a"
-		"1" = "b"
-		"2" = "c"
-	}
-}
-# Find AZ from Subnet information
 
 resource "aws_placement_group" "cluster" {
 	count			= "${length(data.aws_subnet_ids.selected.ids)}"
