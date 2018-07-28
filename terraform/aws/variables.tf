@@ -48,6 +48,7 @@ variable "pool_maximum_size" {
 	description	=	"Maximum Size of All Pools"
 }
 
+# Storage
 /*
 variable "disk_size" {
   type        = "string"
@@ -112,22 +113,13 @@ variable "vpc_id" {
 
 # CLI (Advanced)
 variable "rename_placement_groups" {
-	description = "Value keys a random renaming of placement groups - use with caution"
+	description = "(Dragons) Value keys a random renaming of placement groups"
 	type				= "string"
 	default			= "0"
 }
 
-# Requires Terraform >v0.12
-variable "rolling_update_asg" {
-	description	= "Trigger to dynamically scan ASG's for instance count when doing rolling updates"
-	type				= "string"
-	default			= "0"
-}
-
-# Transitory until Terraform >v0.12
-variable "aws_instances" {
-	description	= "Instance Names injected from the CLI"
-	type				= "list"
-	default			= [""]
+variable "min_alive_instances" {
+	description = "(Computed) Minimum number of instances that must be kept alive during rolling update"
+	default			=	"1"
 }
 

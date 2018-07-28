@@ -30,6 +30,29 @@ resource "aws_launch_configuration" "cyvive_controller" {
   }
 }
 
+module "pool_controller" {
+	source = "nodes"
+
+	pool_maximum_size				= "${var.pool_maximum_size}"
+	vpc_id									= "${var.vpc_id}"
+	pet_placement						=	"${aws_placement_group.cluster.*.id}"
+	subnet_size							= "${length(data.aws_subnet_ids.selected.ids)}"
+	subnet_ids							= "${data.aws_subnet.selected.*.id}"
+	subnet_azs							=	"${data.aws_subnet.selected.*.availability_zone}"
+	launch_configuration		= "${aws_launch_configuration.cyvive_controller.name}"
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Controller instances
 /* Moving into CloudFormation

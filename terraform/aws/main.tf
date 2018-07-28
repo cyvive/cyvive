@@ -1,14 +1,14 @@
 data "template_file" "policy" {
   template = "${file("templates/policy.tpl")}"
   vars {
-    bucket = "${aws_s3_bucket.disk_image_bucket.id}"
+    bucket = "${aws_s3_bucket.cyvive_storage_bucket.id}"
   }
 }
 
 ################## S3 ###################
 
-resource "aws_s3_bucket" "disk_image_bucket" {
-  bucket = "vmimport.randomness"
+resource "aws_s3_bucket" "cyvive_storage_bucket" {
+	bucket = "${random_pet.cyvive_ami_bucket.id}"
 }
 
 ################## IAM ##################
@@ -63,13 +63,16 @@ data "aws_ami" "most_recent_cyvive_pool" {
 }
 */
 
+/*
 resource "aws_launch_configuration" "sample_lc" {
   image_id = "${data.aws_ami.most_recent_cyvive_controller.id}"
   instance_type = "${var.pool_type}"
-  lifecycle {
+
+	lifecycle {
     create_before_destroy = true
   }
 }
+*/
 
 
 /* Due both sides of conditional logic being checked in < v0.12 this must be pushed in externally
@@ -80,39 +83,6 @@ data "aws_instances" "rolling_update_asg" {
 	}
 }
 */
-
-variable "aws_cloudformation_stack" {
-	type = "map"
-	default = {
-		MinimumCapacity = "0"
-		UpdatePauseTime = "PT5M"
-	}
-}
-
-locals {
-	aws_cloudformation_stack = {
-		enabled = {
-			MaximumCapacity = "${var.pool_maximum_size}"
-			LaunchConfigurationName = "${aws_launch_configuration.sample_lc.name}"
-			MinInstancesInService = "${local.aws_cloudformation_stack["enabled.MaximumCapacity"] - 1}"
-		}
-		disabled = {
-			MaximumCapacity = "${var.pool_maximum_size}"
-			LaunchConfigurationName = "${aws_launch_configuration.sample_lc.name}"
-			MinInstancesInService = "${length(var.aws_instances) - 1}"
-			#MinInstancesInService = "${length(concat(data.aws_instances.*.ids, list(""))) - 1}"
-		}
-	}
-}
-
-resource "random_pet" "placement_cluster" {
-	count = "${length(data.aws_subnet_ids.selected.ids)}"
-	keepers = {
-		placement = "${var.rename_placement_groups}"
-	}
-	prefix = "cyvive-${substr(data.aws_subnet.selected.*.availability_zone[count.index], -2, -1)}"
-}
-
 
 data "aws_vpc" "selected" {
 	id = "${var.vpc_id}"
@@ -133,83 +103,18 @@ resource "aws_placement_group" "cluster" {
 	strategy	= "cluster"
 }
 
-resource "aws_cloudformation_stack" "rolling_update_asg" {
-	count			= "${length(data.aws_subnet_ids.selected.ids)}"
-	name			= "${random_pet.placement_cluster.*.id[count.index]}-asg-rolling-update"
-	parameters = "${merge("${var.aws_cloudformation_stack}",
-									"${local.aws_cloudformation_stack["${var.rolling_update_asg == "0" ? "enabled" : "disabled" }"]}",
-									map("PlacementGroup", "${aws_placement_group.cluster.*.id[count.index]}",
-											"AvailabilityZones", "${data.aws_subnet.selected.*.availability_zone[count.index]}",
-											"VPCZoneIdentifier", "${data.aws_subnet.selected.*.id[count.index]}"))}"
-  template_body = <<STACK
-{
-  "Description": "ASG cloud formation template",
-  "Parameters": {
-    "AvailabilityZones": {
-      "Type": "CommaDelimitedList",
-      "Description": "The availability zones to be used for the app"
-    },
-    "LaunchConfigurationName": {
-      "Type": "String",
-      "Description": "The launch configuration name"
-    },
-    "VPCZoneIdentifier": {
-      "Type": "List<AWS::EC2::Subnet::Id>",
-      "Description": "The VPC subnet IDs"
-    },
-    "MaximumCapacity": {
-      "Type": "String",
-      "Description": "The maximum desired capacity size"
-    },
-    "MinimumCapacity": {
-      "Type": "String",
-      "Description": "The minimum and initial desired capacity size"
-    },
-    "MinInstancesInService": {
-      "Type": "String",
-      "Description": "Minimum Number of Healthly Instances while Rolling Update Occurs"
-    },
-    "PlacementGroup": {
-      "Type": "String",
-      "Description": "Name of PlacementGroup these instances belong to in this AZ"
-    },
-    "UpdatePauseTime": {
-      "Type": "String",
-      "Description": "The pause time during rollout for the application"
-    }
-  },
-  "Resources": {
-    "ASG": {
-      "Type": "AWS::AutoScaling::AutoScalingGroup",
-      "Properties": {
-        "AvailabilityZones": { "Ref": "AvailabilityZones" },
-				"Cooldown": "0",
-        "LaunchConfigurationName": { "Ref": "LaunchConfigurationName" },
-        "MaxSize": { "Ref": "MaximumCapacity" },
-        "MinSize": { "Ref": "MinimumCapacity" },
-				"PlacementGroup": { "Ref": "PlacementGroup" },
-        "VPCZoneIdentifier": { "Ref": "VPCZoneIdentifier" },
-        "TerminationPolicies": [ "OldestLaunchConfiguration", "OldestInstance" ],
-        "HealthCheckType": "EC2",
-        "HealthCheckGracePeriod": "30",
-        "Tags": [ ]
-      },
-      "UpdatePolicy": {
-        "AutoScalingRollingUpdate": {
-					"MinInstancesInService": { "Ref": "MinInstancesInService" },
-					"WaitOnResourceSignals": "true",
-          "MaxBatchSize": "1",
-          "PauseTime": { "Ref": "UpdatePauseTime" }
-        }
-      }
-    }
-  },
-  "Outputs": {
-    "AsgName": {
-      "Description": "ASG reference ID",
-      "Value": { "Ref": "ASG" }
-    }
-  }
+resource "random_pet" "placement_cluster" {
+	count = "${length(data.aws_subnet_ids.selected.ids)}"
+	keepers = {
+		placement = "${var.rename_placement_groups}"
+	}
+	prefix = "cyvive-${substr(data.aws_subnet.selected.*.availability_zone[count.index], -2, -1)}"
 }
-STACK
+
+resource "random_pet" "cyvive_ami_bucket" {
+	keepers = {
+		bucket = "${var.cluster_name}"
+	}
+	prefix = "cyvive-ami-${var.cluster_name}"
 }
+
