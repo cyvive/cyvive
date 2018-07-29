@@ -31,7 +31,8 @@ resource "aws_key_pair" "ssh" {
 }
 
 resource "aws_security_group" "linuxkit" {
-  name        = "linuxkit"
+  name    = "linuxkit"
+	vpc_id	= "${var.vpc_id}"
 }
 
 resource "aws_security_group_rule" "ssh" {

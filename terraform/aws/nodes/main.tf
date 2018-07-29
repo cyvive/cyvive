@@ -1,6 +1,7 @@
+# NOTE WaitOnResourceSignals disabled until cfn-signal / ELB integration completed
 resource "aws_cloudformation_stack" "rolling_update_asg" {
 	count			= "${var.subnet_size}"
-	name			= "${var.pet_placement[count.index]}-asg-rolling-update"
+	name			= "${var.cluster_name}-${var.pet_placement[count.index]}-${var.pool_name}-${replace(var.instance_type, ".", "-")}"
 	parameters = "${map("PlacementGroup",						"${var.pet_placement[count.index]}",
 											"AvailabilityZones",				"${var.subnet_azs[count.index]}",
 											"VPCZoneIdentifier",				"${var.subnet_ids[count.index]}",
@@ -8,8 +9,7 @@ resource "aws_cloudformation_stack" "rolling_update_asg" {
 											"MinimumCapacity",					"0",
 											"MaximumCapacity",					"${var.pool_maximum_size}",
 											"LaunchConfigurationName",	"${var.launch_configuration}",
-											"MinInstancesInService",		"${var.min_alive_instances}"
-											)}"
+											"MinInstancesInService",		"${var.min_alive_instances}")}"
 	template_body = <<STACK
 {
   "Description": "ASG cloud formation template",
@@ -66,7 +66,7 @@ resource "aws_cloudformation_stack" "rolling_update_asg" {
       "UpdatePolicy": {
         "AutoScalingRollingUpdate": {
 					"MinInstancesInService": { "Ref": "MinInstancesInService" },
-					"WaitOnResourceSignals": "true",
+					"WaitOnResourceSignals": "false",
           "MaxBatchSize": "1",
           "PauseTime": { "Ref": "UpdatePauseTime" }
         }
@@ -81,5 +81,8 @@ resource "aws_cloudformation_stack" "rolling_update_asg" {
   }
 }
 STACK
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 

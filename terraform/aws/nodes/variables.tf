@@ -37,3 +37,24 @@ variable "min_alive_instances" {
 	default			=	"1"
 }
 
+variable "disable_placement" {
+	description = "Allows smaller instance sizing by disabling placement rules"
+	type				= "string"
+	default			= "false"
+}
+
+variable "pool_name" {
+	description = "name of the current module"
+	type				= "string"
+}
+
+variable "instance_type" {
+	description = "Instance Type Assigned to this Pool"
+	type				= "string"
+}
+
+variable "cluster_name" {
+	description	= "Name of the Cluster"
+	type				= "string"
+}
+

@@ -23,9 +23,21 @@ data "aws_ami" "most_recent_cyvive_controller" {
 }
 
 resource "aws_launch_configuration" "cyvive_controller" {
-  image_id = "${data.aws_ami.most_recent_cyvive_controller.id}"
-  instance_type = "${var.controller_type}"
-  lifecycle {
+  image_id				= "${data.aws_ami.most_recent_cyvive_controller.id}"
+  instance_type		= "${var.controller_type}"
+  key_name        = "${aws_key_pair.ssh.key_name}"
+  security_groups	= ["${aws_security_group.linuxkit.id}"]
+	#iam_instance_profile
+	#user_data_base64
+
+  associate_public_ip_address = true
+
+	ebs_block_device {
+		device_name		= "/dev/sda2"
+		volume_size		= "10"
+	}
+
+	lifecycle {
     create_before_destroy = true
   }
 }
@@ -40,6 +52,9 @@ module "pool_controller" {
 	subnet_ids							= "${data.aws_subnet.selected.*.id}"
 	subnet_azs							=	"${data.aws_subnet.selected.*.availability_zone}"
 	launch_configuration		= "${aws_launch_configuration.cyvive_controller.name}"
+	pool_name								= "controller"
+	instance_type						=	"${var.controller_type}" # Inherited, don't override
+	cluster_name						= "${var.cluster_name}"
 }
 
 
