@@ -5,3 +5,6 @@ python_modules
 terraform.tfstate
 terraform.tfstate.backup
 .terraform
+terraform/proto
+terraform/debug
+terraform/tmp

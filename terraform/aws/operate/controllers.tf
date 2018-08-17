@@ -15,13 +15,6 @@ resource "aws_route53_record" "etcds" {
 }
 */
 
-# Select latest controller AMI
-data "aws_ami" "most_recent_cyvive_controller" {
-  most_recent = true
-  owners = ["self"]
-	name_regex = "cyvive-controller"
-}
-
 resource "aws_launch_configuration" "cyvive_controller" {
   image_id				= "${data.aws_ami.most_recent_cyvive_controller.id}"
   instance_type		= "${var.controller_type}"

@@ -18,3 +18,7 @@ coverage.lcov
 .nyc_output/
 coverage.lcov
 python_modules/
+terraform/proto
+terraform/debug
+terraform/tmp
+

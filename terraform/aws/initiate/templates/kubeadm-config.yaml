@@ -1,0 +1,38 @@
+{
+  "kind": "KubeletConfiguration",
+  "apiVersion": "kubelet.config.k8s.io/v1beta1",
+  "staticPodPath": "/etc/kubernetes/manifests",
+  "clusterDomain": "cluster.local",
+  "clusterDNS": ["10.96.0.10"],
+  "systemReservedCgroup": "systemreserved",
+  "kubeReservedCgroup": "podruntime",
+  "cgroupRoot": "/",
+  "hairpinMode": "hairpin-veth",
+  "maxPods": 960,
+  "podPidsLimit": -1,
+  "serializeImagePulls": false,
+  "evictionHard": {
+    "memory.available":  "100Mi",
+    "nodefs.available":  "10%",
+    "nodefs.inodesFree": "5%",
+    "imagefs.available": "15%"
+  },
+"evictionSoft": {
+  "memory.available":  "200Mi",
+  "nodefs.available:  "20%"
+  nodefs.inodesFree: "10%"
+  imagefs.available: "30%"
+PodsPerCore: 100
+featureGates:
+  SupportPodPidsLimit: true
+  PodShareProcessNamespace: true
+failSwapOn: false
+CPUManagerPolicy: static
+SystemReserved:
+  cpu: 100m
+  memory: 400M
+KubeReserved:
+  cpu: 100m
+  memory: 100M
+EnforceNodeAllocatable: ["pods", "system-reserved", "kube-reserved"]
+}
