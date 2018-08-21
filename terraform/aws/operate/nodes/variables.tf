@@ -8,6 +8,11 @@ variable "vpc_id" {
 	type				= "string"
 }
 
+variable "lb_target_group_arn" {
+	description = "ARN's to ensure this Pool registers against"
+	type				= "list"
+}
+
 variable "pet_placement" {
 	description = "Generated pet names for placement groups"
 	type				= "list"

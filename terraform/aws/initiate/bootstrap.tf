@@ -21,6 +21,7 @@ data "template_file" "kubeadm" {
   vars {
     token_id									= "${local.token_id}"
 		cluster_domain						= "${var.cluster_domain_suffix}"
+		cluster_api_endpoint			=	"api-${local.cluster_fqdn}"
   }
 }
 
@@ -28,7 +29,7 @@ resource "aws_instance" "bootstrap" {
 	ami													= "${data.aws_ami.most_recent_cyvive_generic.id}"
   instance_type								= "m4.large"
   key_name										= "${local.ssh_key}"
-	vpc_security_group_ids			= ["sg-4312cf26"]
+	vpc_security_group_ids			= ["${aws_security_group.controllers.id}"]
 	#subnet_id = "subnet-099a536c"
   associate_public_ip_address = true
 	ebs_block_device {
@@ -36,10 +37,19 @@ resource "aws_instance" "bootstrap" {
 		volume_size								= "10"
 		delete_on_termination			= true
 	}
+	iam_instance_profile				= "${aws_iam_instance_profile.bootstrap.name}"
 	tags = {
 		Name	= "${local.name_prefix}-bootstrap"
 	}
 	user_data_base64 = "${base64encode(jsonencode(local.init_bootstrap))}"
+}
+
+# Attach controller instances to apiserver NLB
+resource "aws_lb_target_group_attachment" "controllers" {
+  target_group_arn = "${aws_lb_target_group.controllers.arn}"
+  target_id        = "${aws_instance.bootstrap.id}"
+  #target_id        = "${element(aws_instance.controllers.*.id, count.index)}"
+  port             = 6443
 }
 
 # Controller instances

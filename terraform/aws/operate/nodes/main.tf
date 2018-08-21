@@ -9,7 +9,8 @@ resource "aws_cloudformation_stack" "rolling_update_asg" {
 											"MinimumCapacity",					"0",
 											"MaximumCapacity",					"${var.pool_maximum_size}",
 											"LaunchConfigurationName",	"${var.launch_configuration}",
-											"MinInstancesInService",		"${var.min_alive_instances}")}"
+											"MinInstancesInService",		"${var.min_alive_instances}")}",
+											"TargetGroupARNS",					"${var.lb_target_group_arn}"
 	template_body = <<STACK
 {
   "Description": "ASG cloud formation template",
@@ -61,7 +62,8 @@ resource "aws_cloudformation_stack" "rolling_update_asg" {
         "TerminationPolicies": [ "OldestLaunchConfiguration", "OldestInstance" ],
         "HealthCheckType": "EC2",
         "HealthCheckGracePeriod": "30",
-        "Tags": [ ]
+        "Tags": [ ],
+				"TargetGroupARNS": { "Ref": "TargetGroupARNS" }
       },
       "UpdatePolicy": {
         "AutoScalingRollingUpdate": {

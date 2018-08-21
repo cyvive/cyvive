@@ -16,3 +16,23 @@ Kubernetes v1.12 will futher simplify the installation process, but until then t
 5.
 
 NestedStacks are perfectly safe when only rolling etcd or kube-api as a block ami, not minute changes
+
+# Subnets
+- Don't use the default subnet in the VPC
+- Minimum /22 for node CDIR range
+- Tag the 'private' subnets with 'Cyvive = Deployable'
+- NAT Gateways should be in the public subnets
+- 3 AZ's are expected for VPC for ETCD n+1
+- NAT gateways should be in the Public Subnets and all Cyvive compute will be in the private subnets
+- Public Subnets only contain ALB / NLB / ELB for traffic into the cluster
+- Tags
+	(Public)
+	- Cyvive "Public"
+	(Private)
+	- Cyvive = "Private"
+
+
+# BootStrap Notes
+
+- Node creates all the necessary CA certificates, these are watched and synced to the ALB as part of the boot process via Terraform
+- Folder level policies are created for the 3 terraform agents to do their work

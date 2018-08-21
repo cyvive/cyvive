@@ -1,25 +1,32 @@
 ################## LOCALS ##################
 
 locals {
-	is_private_amis			= "${var.s3_private_amis_bucket == "" ? 0 : 1}"
-	is_public_amis			= "${var.s3_private_amis_bucket == "" ? 1 : 0}"
-	ami_owner						= "${var.s3_private_amis_bucket == "" ? "self" : "742773893669"}"
-	is_ssh							= "${var.ssh_enabled == "0" ? 0 : 1}"
-	ssh_key							= "${var.ssh_enabled == "0" ? "" : var.ssh_authorized_key}"
-	name_prefix					=	"${var.cluster_name}"
-	cluster_zone				= "${var.cluster_public == "true" ? data.aws_route53_zone.public.name : data.aws_route53_zone.private.name}"
-	cluster_fqdn				= "${var.cluster_name}.${replace(local.cluster_zone, "/[.]$/", "")}"
-	token_combiner			= "${random_string.tokenA.result}.${random_string.tokenB.result}"
-	token_id						= "${var.pool_token == "" ? local.token_combiner : var.pool_token}"
+	is_public_cluster			= "${var.cluster_public == "true" ? "1" : 0}"
+	is_alb_public_cluster	= "${var.cluster_public == "true" ? "false" : "true"}"
+	cluster_zone_id				= "${var.cluster_public == "true" ? data.aws_route53_zone.public.id: data.aws_route53_zone.private.id}"
+	cluster_zone					= "${data.aws_route53_zone.private.name}"
+	cluster_fqdn					= "${var.cluster_name}.${replace(local.cluster_zone, "/[.]$/", "")}"
+
+	is_private_amis				= "${var.s3_private_amis_bucket == "" ? 0 : 1}"
+	is_public_amis				= "${var.s3_private_amis_bucket == "" ? 1 : 0}"
+	ami_owner							= "${var.s3_private_amis_bucket == "" ? "self" : "742773893669"}"
+
+	is_ssh								= "${var.ssh_enabled == "0" ? 0 : 1}"
+	ssh_key								= "${var.ssh_enabled == "0" ? "" : var.ssh_authorized_key}"
+
+	name_prefix						=	"cyvive-${var.cluster_name}"
+
+	token_combiner				= "${random_string.tokenA.result}.${random_string.tokenB.result}"
+	token_id							= "${var.pool_token == "" ? local.token_combiner : var.pool_token}"
 
 	init_bootstrap = {
 		kubeadm = {
 			entries = {
 				init = {
-					content			= ""
+					content				= ""
 				},
-				kubeadm.yaml	= {
-					content			= "${data.template_file.kubeadm.rendered}"
+				kubeadm.yaml		= {
+					content				= "${data.template_file.kubeadm.rendered}"
 				}
 			}
 		},
@@ -45,23 +52,39 @@ data "aws_vpc" "selected" {
 	id			= "${var.vpc_id}"
 }
 
-data "aws_subnet_ids" "selected" {
+data "aws_subnet_ids" "ingress" {
 	vpc_id	= "${data.aws_vpc.selected.id}"
+	tags {
+		Cyvive	= "Ingress"
+	}
 }
 
-data "aws_subnet" "selected" {
-	count		= "${length(data.aws_subnet_ids.selected.ids)}"
-	id			= "${data.aws_subnet_ids.selected.ids[count.index]}"
+data "aws_subnet" "ingress" {
+	count		= "${length(data.aws_subnet_ids.ingress.ids)}"
+	id			= "${data.aws_subnet_ids.ingress.ids[count.index]}"
+}
+
+data "aws_subnet_ids" "pools" {
+	vpc_id	= "${data.aws_vpc.selected.id}"
+	tags {
+		Cyvive	= "Pools"
+	}
+}
+
+data "aws_subnet" "pools" {
+	count		= "${length(data.aws_subnet_ids.pools.ids)}"
+	id			= "${data.aws_subnet_ids.pools.ids[count.index]}"
 }
 
 ################## ROUTE53 INFORMATION ##################
 
 data "aws_route53_zone" "public" {
-	name	= "${var.dns_zone}"
+	name					= "${var.dns_zone}"
 }
 
 data "aws_route53_zone" "private" {
-	name	= "${var.dns_zone}"
+	name					= "${var.dns_zone}"
+	private_zone	= "true"
 }
 
 
@@ -69,29 +92,29 @@ data "aws_route53_zone" "private" {
 ################## PLACEMENT GROUPS ##################
 
 resource "random_pet" "placement_cluster" {
-	count				= "${length(data.aws_subnet_ids.selected.ids)}"
+	count				= "${length(data.aws_subnet_ids.pools.ids)}"
 	keepers = {
 		placement = "${var.rename_placement_groups}"
 	}
-	prefix			= "cyvive-${local.name_prefix}-${substr(data.aws_subnet.selected.*.availability_zone[count.index], -2, -1)}"
+	prefix			= "cyvive-${local.name_prefix}-${substr(data.aws_subnet.pools.*.availability_zone[count.index], -2, -1)}"
 }
 
 resource "random_pet" "placement_spread" {
-	count				= "${length(data.aws_subnet_ids.selected.ids)}"
+	count				= "${length(data.aws_subnet_ids.pools.ids)}"
 	keepers = {
 		placement = "${var.rename_placement_groups}"
 	}
-	prefix			= "cyvive-${local.name_prefix}-${substr(data.aws_subnet.selected.*.availability_zone[count.index], -2, -1)}"
+	prefix			= "${local.name_prefix}-${substr(data.aws_subnet.pools.*.availability_zone[count.index], -2, -1)}"
 }
 
 resource "aws_placement_group" "cluster" {
-	count				= "${length(data.aws_subnet_ids.selected.ids)}"
+	count				= "${length(data.aws_subnet_ids.pools.ids)}"
 	name				= "${random_pet.placement_cluster.*.id[count.index]}"
 	strategy		= "cluster"
 }
 
 resource "aws_placement_group" "spread" {
-	count				= "${length(data.aws_subnet_ids.selected.ids)}"
+	count				= "${length(data.aws_subnet_ids.pools.ids)}"
 	name				= "${random_pet.placement_spread.*.id[count.index]}"
 	strategy		= "spread"
 }

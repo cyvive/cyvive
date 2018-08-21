@@ -5,7 +5,7 @@ api:
   # advertiseAddress: 192.168.0.102
   # bindPort: 6443
   # TODO NLB endpoint
-  controlPlaneEndpoint: ''
+  controlPlaneEndpoint: ${cluster_api_endpoint}
 auditPolicy:
   logDir: /var/log/kubernetes/audit
   logMaxAge: 2
