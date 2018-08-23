@@ -21,8 +21,8 @@ provider "null" {
   version = "~> 1.0"
 }
 */
-
+/*
 provider "tls" {
   version = "~> 1.2"
 }
-
+*/

@@ -25,6 +25,14 @@ data "template_file" "kubeadm" {
   }
 }
 
+data "template_file" "bootstrap_lb" {
+  template										= "${file("templates/bootstrap_lb.tpl")}"
+	vars {
+		lb_arn										= "${aws_lb.control_plane.arn}"
+		target_group_arn					= "${aws_lb_target_group.controllers.arn}"
+  }
+}
+
 resource "aws_instance" "bootstrap" {
 	ami													= "${data.aws_ami.most_recent_cyvive_generic.id}"
   instance_type								= "m4.large"

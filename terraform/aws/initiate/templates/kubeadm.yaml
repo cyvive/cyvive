@@ -1,5 +1,6 @@
 apiVersion: kubeadm.k8s.io/v1alpha2
 kind: MasterConfiguration
+# TODO specify kubernetesVersion to install through the stack (including AMI names)
 # kubernetesVersion: v1.11.0
 api:
   # advertiseAddress: 192.168.0.102
@@ -29,7 +30,7 @@ kubeProxy:
   config:
     bindAddress: 0.0.0.0
     clientConnection:
-      acceptContentTypes: ""
+      # acceptContentTypes: ""
       burst: 10
       kubeconfig: /var/lib/kube-proxy/kubeconfig.conf
       qps: 5
@@ -44,7 +45,7 @@ kubeProxy:
       tcpEstablishedTimeout: 24h0m0s
     enableProfiling: false
     healthzBindAddress: 0.0.0.0:10256
-    hostnameOverride: ""
+    # hostnameOverride: ""
     iptables:
       masqueradeAll: false
       masqueradeBit: 14
@@ -76,6 +77,7 @@ kubeletConfiguration:
     cgroupsPerQOS: true
     authentication:
       anonymous:
+        # @debug Required for initial bootstrap node to use load-balancer
         enabled: false
       webhook:
         cacheTTL: 2m0s

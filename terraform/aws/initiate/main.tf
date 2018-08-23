@@ -3,6 +3,7 @@
 locals {
 	is_public_cluster			= "${var.cluster_public == "true" ? "1" : 0}"
 	is_alb_public_cluster	= "${var.cluster_public == "true" ? "false" : "true"}"
+	is_nlb_public_cluster	= "${var.cluster_public == "true" ? "false" : "true"}"
 	cluster_zone_id				= "${var.cluster_public == "true" ? data.aws_route53_zone.public.id: data.aws_route53_zone.private.id}"
 	cluster_zone					= "${data.aws_route53_zone.private.name}"
 	cluster_fqdn					= "${var.cluster_name}.${replace(local.cluster_zone, "/[.]$/", "")}"
@@ -23,10 +24,13 @@ locals {
 		kubeadm = {
 			entries = {
 				init = {
-					content				= ""
+					content				= "api-${local.cluster_fqdn}"
 				},
 				kubeadm.yaml		= {
 					content				= "${data.template_file.kubeadm.rendered}"
+				},
+				terraform.tfvars = {
+					content				= "${data.template_file.bootstrap_lb.rendered}"
 				}
 			}
 		},

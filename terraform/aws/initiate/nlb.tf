@@ -1,5 +1,19 @@
 ################## NLB @ CONTROL PLANE ###################
 # Network Load Balancer DNS Record
+resource "aws_route53_record" "private_apiserver" {
+	zone_id										= "${data.aws_route53_zone.private.id}"
+
+	name											= "api-${local.cluster_fqdn}"
+  type											= "A"
+
+  # AWS recommends their special "alias" records for ELBs
+  alias {
+    name                   = "${aws_lb.control_plane.dns_name}"
+    zone_id                = "${aws_lb.control_plane.zone_id}"
+    evaluate_target_health = true
+  }
+}
+
 resource "aws_route53_record" "apiserver" {
 	#count											= "${local.is_public_cluster}"
   zone_id										= "${local.cluster_zone_id}"
@@ -69,7 +83,11 @@ resource "aws_lb_target_group" "controllers" {
 	name									= "${local.name_prefix}-controllers"
   vpc_id								= "${data.aws_vpc.selected.id}"
   target_type						= "instance"
-	proxy_protocol_v2			= "true"
+	proxy_protocol_v2			= "false"
+	stickiness {
+		type								= "lb_cookie"
+		enabled							= "false"
+	}
 
 	#deregistration_delay	=	300
 	#slow_start						= 120
@@ -80,7 +98,7 @@ resource "aws_lb_target_group" "controllers" {
   # TCP health check for apiserver
   health_check {
     protocol						= "TCP"
-    port								= 6443
+    port								= 10256
 
     # NLBs required to use same healthy and unhealthy thresholds
     healthy_threshold   = 3
