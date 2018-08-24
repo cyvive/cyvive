@@ -25,7 +25,7 @@ resource "aws_iam_role" "vmimport" {
 	count								= "${local.is_private_amis}"
   name								= "vmimport"
 	description					= "Ability to import AMI's from the private S3 AMI Bucket"
-  assume_role_policy	= "${file("templates/vmimport-policy.json")}"
+  assume_role_policy	= "${file("templates/vmimport_policy.json")}"
 }
 
 
