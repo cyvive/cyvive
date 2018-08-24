@@ -45,7 +45,7 @@ resource "aws_instance" "bootstrap" {
 		volume_size								= "10"
 		delete_on_termination			= true
 	}
-	iam_instance_profile				= "${aws_iam_instance_profile.bootstrap.name}"
+	iam_instance_profile				= "${aws_iam_instance_profile.controller.name}"
 	tags = {
 		Name	= "${local.name_prefix}-bootstrap"
 	}

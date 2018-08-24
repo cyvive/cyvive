@@ -49,6 +49,3 @@ resource "aws_s3_bucket" "cluster_config" {
 	bucket							= "${random_pet.cluster_config_bucket.id}"
 }
 
-// TODO instances able to read / write with bucket
-
-

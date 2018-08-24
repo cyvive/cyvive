@@ -31,6 +31,9 @@ locals {
 				},
 				terraform.tfvars = {
 					content				= "${data.template_file.bootstrap_lb.rendered}"
+				},
+				s3sync					= {
+					content				= "s3://${aws_s3_bucket.cluster_config.bucket}/kubeadm"
 				}
 			}
 		},
