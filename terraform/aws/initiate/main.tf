@@ -2,7 +2,6 @@
 
 locals {
 	is_public_cluster			= "${var.cluster_public == "true" ? "1" : 0}"
-	is_alb_public_cluster	= "${var.cluster_public == "true" ? "false" : "true"}"
 	is_nlb_public_cluster	= "${var.cluster_public == "true" ? "false" : "true"}"
 	cluster_zone_id				= "${var.cluster_public == "true" ? data.aws_route53_zone.public.id: data.aws_route53_zone.private.id}"
 	cluster_zone					= "${data.aws_route53_zone.private.name}"
@@ -29,26 +28,34 @@ locals {
 				kubeadm.yaml		= {
 					content				= "${data.template_file.kubeadm.rendered}"
 				},
+				/*
 				terraform.tfvars = {
-					content				= "${data.template_file.bootstrap_lb.rendered}"
+					content				= "${data.template_file.terraform_vars.rendered}"
 				},
+				main.tf = {
+					content				= "${data.template_file.terraform_main.rendered}"
+				},
+				*/
 				s3sync					= {
 					content				= "s3://${aws_s3_bucket.cluster_config.bucket}/kubeadm"
 				}
 			}
 		},
-		/*
 		kubelet = {
 			entries = {
+				cluster-fqdn = {
+					content				=	"${local.cluster_fqdn}"
+				}
+				/*
 				disabled = {
 					content = ""
 				},
 				disabledexec = {
 					content = ""
 				}
+				*/
 			}
 		}
-		*/
 	}
 
 }
@@ -94,10 +101,9 @@ data "aws_route53_zone" "private" {
 	private_zone	= "true"
 }
 
-
-
 ################## PLACEMENT GROUPS ##################
 
+/*
 resource "random_pet" "placement_cluster" {
 	count				= "${length(data.aws_subnet_ids.pools.ids)}"
 	keepers = {
@@ -106,25 +112,12 @@ resource "random_pet" "placement_cluster" {
 	prefix			= "cyvive-${local.name_prefix}-${substr(data.aws_subnet.pools.*.availability_zone[count.index], -2, -1)}"
 }
 
-resource "random_pet" "placement_spread" {
-	count				= "${length(data.aws_subnet_ids.pools.ids)}"
-	keepers = {
-		placement = "${var.rename_placement_groups}"
-	}
-	prefix			= "${local.name_prefix}-${substr(data.aws_subnet.pools.*.availability_zone[count.index], -2, -1)}"
-}
-
 resource "aws_placement_group" "cluster" {
 	count				= "${length(data.aws_subnet_ids.pools.ids)}"
 	name				= "${random_pet.placement_cluster.*.id[count.index]}"
 	strategy		= "cluster"
 }
-
-resource "aws_placement_group" "spread" {
-	count				= "${length(data.aws_subnet_ids.pools.ids)}"
-	name				= "${random_pet.placement_spread.*.id[count.index]}"
-	strategy		= "spread"
-}
+*/
 
 ################## LATEST AMI's (Standard) ##################
 

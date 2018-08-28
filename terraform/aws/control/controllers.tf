@@ -15,79 +15,48 @@ resource "aws_route53_record" "etcds" {
 }
 */
 
-################## BOOTSTRAP ##################
-data "template_file" "kubeadm" {
-  template										= "${file("templates/kubeadm.yaml")}"
-  vars {
-    token_id									= "${local.token_id}"
-		cluster_domain						= "${var.cluster_domain_suffix}"
-		cluster_api_endpoint			=	"api-${local.cluster_fqdn}"
-  }
-}
+resource "aws_launch_configuration" "cyvive_controller" {
+  image_id								= "${data.aws_ami.most_recent_cyvive_generic.id}"
+  instance_type						= "${var.controller_type}"
+  key_name								= "${local.ssh_key}"
+  security_groups					= [	"${data.aws_security_group.hardwired_controllers.id}",
+															"${data.aws_security_group.linked_controllers.id}"]
 
-/*
-data "template_file" "terraform_main" {
-  template										= "${file("templates/terraform_main.tf")}"
-	vars {
-  }
-}
-
-data "template_file" "terraform_vars" {
-  template										= "${file("templates/terraform_vars.tpl")}"
-	vars {
-		lb_arn										= "${aws_lb.healthz.arn}"
-		target_group_arn					= "${aws_lb_target_group.controllers_private.arn}"
-  }
-}
-*/
-
-resource "aws_instance" "bootstrap" {
-	ami													= "${data.aws_ami.most_recent_cyvive_generic.id}"
-  instance_type								= "m4.large"
-  key_name										= "${local.ssh_key}"
-	vpc_security_group_ids			= ["${aws_security_group.hardwired_controllers.id}", "${aws_security_group.linked_controllers.id}"]
-	#subnet_id = "subnet-099a536c"
   associate_public_ip_address = true
+
 	ebs_block_device {
-		device_name								= "/dev/sdb"
-		volume_size								= "10"
-		delete_on_termination			= true
+		device_name						= "/dev/sda2"
+		volume_size						= "10"
 	}
-	iam_instance_profile				= "${aws_iam_instance_profile.controller.name}"
-	tags = {
-		Name	= "${local.name_prefix}-bootstrap"
-	}
-	user_data_base64 = "${base64encode(jsonencode(local.init_bootstrap))}"
+	iam_instance_profile		= "${data.aws_iam_instance_profile.controller.name}"
+	user_data_base64				= "${base64encode(jsonencode(local.init_controller))}"
+
+	lifecycle {
+    create_before_destroy = true
+  }
 }
 
-# Attach controller instances to apiserver NLB
-resource "aws_lb_target_group_attachment" "controllers_public" {
-	count							= "${local.is_public_cluster}"
-  target_group_arn	= "${aws_lb_target_group.controllers_public.arn}"
-  target_id					= "${aws_instance.bootstrap.id}"
+module "pool_controller" {
+	source = "nodes"
+
+	pool_maximum_size				= "${var.pool_maximum_size}"
+	vpc_id									= "${data.aws_vpc.selected.id}"
+	pet_placement						=	"${aws_placement_group.spread.*.name}"
+	subnet_size							= "${length(data.aws_subnet_ids.pools.ids)}"
+	subnet_ids							= "${data.aws_subnet.pools.*.id}"
+	subnet_azs							=	"${data.aws_subnet.pools.*.availability_zone}"
+	launch_configuration		= "${aws_launch_configuration.cyvive_controller.name}"
+	elb_names								= [	"${data.aws_elb.control_plane_private.name}",
+															"${data.aws_elb.healthz.name}"]
+	pool_name								= "controller"
+	instance_type						=	"${var.controller_type}" # Inherited, don't override
+	cluster_name						= "${var.cluster_name}"
+	lb_target_group_arn			= ["${data.aws_lb_target_group.controllers_public.arn}"]
 }
 
-resource "aws_elb_attachment" "controllers_private" {
-	elb				= "${aws_elb.control_plane_private.id}"
-	instance	= "${aws_instance.bootstrap.id}"
-}
 
-resource "aws_elb_attachment" "bootstrap_healthz" {
-	elb				= "${aws_elb.healthz.id}"
-	instance	= "${aws_instance.bootstrap.id}"
-}
-/*
-resource "aws_lb_target_group_attachment" "controllers_private" {
-	count							= "${local.is_public_cluster}"
-  target_group_arn	= "${aws_lb_target_group.controllers_private.arn}"
-  target_id					= "${aws_instance.bootstrap.id}"
-}
 
-resource "aws_lb_target_group_attachment" "healthz" {
-  target_group_arn = "${aws_lb_target_group.healthz.arn}"
-  target_id        = "${aws_instance.bootstrap.id}"
-}
-*/
+
 
 # Controller instances
 /* Moving into CloudFormation
