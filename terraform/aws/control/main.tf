@@ -19,31 +19,51 @@ locals {
 	token_id							= "${var.pool_token}"
 
 	init_controller = {
+		/*
 		kubeadm = {
+			entries = {
+				bootstrap.etcd	= "${var.bootstrap_instance}"
+			}
+		},
+		*/
+		kubenode = {
 			entries = {
 				join = {
 					content = "--token ${local.token_id} --discovery-token-unsafe-skip-ca-verification api-${local.cluster_fqdn}:6443"
 				},
 				/*
-				s3down					= {
-					content				= "s3://${data.aws_s3_bucket.cluster_config.bucket}/kubeadm"
+				disabled = {
+					content = ""
+				},
+				disabledexec = {
+					content = ""
 				}
 				*/
 			}
+		},
+		cyvive = {
+			entries = {
+				s3config				= {
+					content				= "s3://${var.s3_config_bucket}/kubeadm"
+				},
+				cluster.fqdn = {
+					content				=	"${local.cluster_fqdn}"
+				}
+			}
+		},
+		/*
+		kubelet = {
+			entries = {
+				disabledexec = {
+					content = ""
+				}
+			}
 		}
+		*/
 	}
 }
 
 /*
->>> HERE Kublets still struggling to come oneline <<< @ Monday
-- Create a private NLB and register the internal nodes against it
-- port 10256 for healthcheck of kubelet security group should allow access within any of the private cidr_blocks
-- private-api should be also available on this nlb set healthcheck port to same as kublet
-- change cloudformation script to use the private nlb for healthchecks (much easier, and needed anyway) 30sec is fine as k8's operates on a different life cycle
-
-create public one for external access.
-
-
 BROKEN s3sync container has timing issues it needs to not sync anything until after the kublet fully comes online, just leave disabled and focus on pools for the moment
 */
 

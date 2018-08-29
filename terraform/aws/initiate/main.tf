@@ -22,9 +22,12 @@ locals {
 	init_bootstrap = {
 		kubeadm = {
 			entries = {
-				init = {
-					content				= "api-${local.cluster_fqdn}"
+				# TODO rename init to etcd
+				/*
+				bootstrap = {
+					content				= ""
 				},
+				*/
 				kubeadm.yaml		= {
 					content				= "${data.template_file.kubeadm.rendered}"
 				},
@@ -36,14 +39,14 @@ locals {
 					content				= "${data.template_file.terraform_main.rendered}"
 				},
 				*/
-				s3sync					= {
-					content				= "s3://${aws_s3_bucket.cluster_config.bucket}/kubeadm"
-				}
 			}
 		},
-		kubelet = {
+		cyvive = {
 			entries = {
-				cluster-fqdn = {
+				s3config				= {
+					content				= "s3://${aws_s3_bucket.cluster_config.bucket}/kubeadm"
+				},
+				cluster.fqdn = {
 					content				=	"${local.cluster_fqdn}"
 				}
 				/*

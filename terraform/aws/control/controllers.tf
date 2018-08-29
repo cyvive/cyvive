@@ -14,7 +14,7 @@ resource "aws_route53_record" "etcds" {
   records = ["${element(aws_instance.controllers.*.private_ip, count.index)}"]
 }
 */
-
+/*
 resource "aws_launch_configuration" "cyvive_controller" {
   image_id								= "${data.aws_ami.most_recent_cyvive_generic.id}"
   instance_type						= "${var.controller_type}"
@@ -42,7 +42,8 @@ module "pool_controller" {
 	pool_maximum_size				= "${var.pool_maximum_size}"
 	vpc_id									= "${data.aws_vpc.selected.id}"
 	pet_placement						=	"${aws_placement_group.spread.*.name}"
-	subnet_size							= "${length(data.aws_subnet_ids.pools.ids)}"
+	subnet_size							= "1"
+	#subnet_size							= "${length(data.aws_subnet_ids.pools.ids)}"
 	subnet_ids							= "${data.aws_subnet.pools.*.id}"
 	subnet_azs							=	"${data.aws_subnet.pools.*.availability_zone}"
 	launch_configuration		= "${aws_launch_configuration.cyvive_controller.name}"
@@ -53,7 +54,43 @@ module "pool_controller" {
 	cluster_name						= "${var.cluster_name}"
 	lb_target_group_arn			= ["${data.aws_lb_target_group.controllers_public.arn}"]
 }
+*/
 
+resource "aws_instance" "control" {
+	ami													= "${data.aws_ami.most_recent_cyvive_generic.id}"
+  instance_type								= "m4.large"
+  key_name										= "${local.ssh_key}"
+	vpc_security_group_ids			= ["sg-8514c9e0"]
+	#vpc_security_group_ids			= ["${data.aws_security_group.hardwired_controllers.id}", "${data.aws_security_group.linked_controllers.id}"]
+	#subnet_id = "subnet-099a536c"
+  associate_public_ip_address = true
+	ebs_block_device {
+		device_name								= "/dev/sdb"
+		volume_size								= "10"
+		delete_on_termination			= true
+	}
+	iam_instance_profile				= "${data.aws_iam_instance_profile.controller.name}"
+	tags = {
+		Name	= "${local.name_prefix}-control"
+	}
+	user_data_base64 = "${base64encode(jsonencode(local.init_controller))}"
+}
+
+resource "aws_lb_target_group_attachment" "control_public" {
+	count							= "${local.is_public_cluster}"
+  target_group_arn	= "${data.aws_lb_target_group.controllers_public.arn}"
+  target_id					= "${aws_instance.control.id}"
+}
+
+resource "aws_elb_attachment" "control_private" {
+	elb				= "${data.aws_elb.control_plane_private.id}"
+	instance	= "${aws_instance.control.id}"
+}
+
+resource "aws_elb_attachment" "healthz" {
+	elb				= "${data.aws_elb.healthz.id}"
+	instance	= "${aws_instance.control.id}"
+}
 
 
 

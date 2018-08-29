@@ -21,7 +21,7 @@ data "template_file" "kubeadm" {
   vars {
     token_id									= "${local.token_id}"
 		cluster_domain						= "${var.cluster_domain_suffix}"
-		cluster_api_endpoint			=	"api-${local.cluster_fqdn}"
+		cluster_fqdn							=	"${local.cluster_fqdn}"
   }
 }
 
@@ -45,7 +45,8 @@ resource "aws_instance" "bootstrap" {
 	ami													= "${data.aws_ami.most_recent_cyvive_generic.id}"
   instance_type								= "m4.large"
   key_name										= "${local.ssh_key}"
-	vpc_security_group_ids			= ["${aws_security_group.hardwired_controllers.id}", "${aws_security_group.linked_controllers.id}"]
+	vpc_security_group_ids			= ["sg-8514c9e0"]
+	#vpc_security_group_ids			= ["${aws_security_group.hardwired_controllers.id}", "${aws_security_group.linked_controllers.id}"]
 	#subnet_id = "subnet-099a536c"
   associate_public_ip_address = true
 	ebs_block_device {
@@ -76,6 +77,7 @@ resource "aws_elb_attachment" "bootstrap_healthz" {
 	elb				= "${aws_elb.healthz.id}"
 	instance	= "${aws_instance.bootstrap.id}"
 }
+
 /*
 resource "aws_lb_target_group_attachment" "controllers_private" {
 	count							= "${local.is_public_cluster}"

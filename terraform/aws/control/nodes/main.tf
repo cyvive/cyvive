@@ -67,7 +67,7 @@ resource "aws_cloudformation_stack" "rolling_update_asg" {
         "VPCZoneIdentifier": { "Ref": "VPCZoneIdentifier" },
         "TerminationPolicies": [ "OldestLaunchConfiguration", "OldestInstance" ],
         "HealthCheckType": "ELB",
-        "HealthCheckGracePeriod": "30",
+        "HealthCheckGracePeriod": "120",
         "Tags": [ ],
 				"TargetGroupARNs": { "Ref": "TargetGroupARNs" }
       },

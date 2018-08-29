@@ -1,12 +1,13 @@
 apiVersion: kubeadm.k8s.io/v1alpha2
 kind: MasterConfiguration
 # TODO specify kubernetesVersion to install through the stack (including AMI names)
-# kubernetesVersion: v1.11.0
+kubernetesVersion: v1.11.1
+apiServerCertSANs:
+  - "api-${cluster_fqdn}"
 api:
   # advertiseAddress: 192.168.0.102
   # bindPort: 6443
-  # TODO NLB endpoint
-  controlPlaneEndpoint: ${cluster_api_endpoint}
+  controlPlaneEndpoint: api-${cluster_fqdn}
 auditPolicy:
   logDir: /var/log/kubernetes/audit
   logMaxAge: 2
@@ -22,9 +23,14 @@ bootstrapTokens:
 certificatesDir: /etc/kubernetes/pki
 clusterName: kubernetes
 etcd:
-  local:
-    dataDir: /var/lib/etcd
-    image: ""
+  external:
+    endpoints:
+      - https://etcda-${cluster_fqdn}:2379
+      - https://etcdb-${cluster_fqdn}:2379
+      - https://etcdc-${cluster_fqdn}:2379
+    caFile: /etc/kubernetes/pki/etcd/ca.crt
+    certFile: /etc/kubernetes/pki/apiserver-etcd-client.crt
+    keyFile: /etc/kubernetes/pki/apiserver-etcd-client.key
 imageRepository: k8s.gcr.io
 kubeProxy:
   config:

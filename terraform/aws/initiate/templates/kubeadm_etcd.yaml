@@ -1,0 +1,21 @@
+apiVersion: kubeadm.k8s.io/v1alpha2
+kind: MasterConfiguration
+certificatesDir: /etc/kubernetes/pki
+clusterName: kubernetes
+etcd:
+  local:
+    dataDir: /var/lib/etcd
+    serverCertSANs:
+      - "${etcd_name}-${cluster_fqdn}"
+    peerCertSANs:
+      - "${etcd_name}-${cluster_fqdn}"
+    extraArgs:
+      initial-cluster: etcd0=https://etcd0-${cluster_fqdn}:2380,etcd1=https://etcd1-${cluster_fqdn}:2380,etcd2=https://etcd2-${cluster_fqdn}:2380
+      initial-cluster-state: new
+      name: ${etcd_name}
+      listen-peer-urls: https://${etcd_name}-${cluster_fqdn}:2380
+      listen-client-urls: https://${etcd_name}-${cluster_fqdn}:2379
+      advertise-client-urls: https://${etcd_name}-${cluster_fqdn}:2379
+      initial-advertise-peer-urls: https://${etcd_name}-${cluster_fqdn}:2380
+    # image: ""
+

@@ -117,13 +117,6 @@ resource "aws_elb" "healthz" {
 		lb_protocol					= "TCP"
 	}
 
-	listener {
-		instance_port				= 2379
-		instance_protocol		= "TCP"
-		lb_port							= 2379
-		lb_protocol					= "TCP"
-	}
-
 	health_check {
 		healthy_threshold		= 2
 		unhealthy_threshold	= 2
@@ -144,6 +137,27 @@ resource "aws_elb" "control_plane_private" {
 		instance_port				= 6443
 		instance_protocol		= "TCP"
 		lb_port							= 6443
+		lb_protocol					= "TCP"
+	}
+
+	listener {
+		instance_port				= 10250
+		instance_protocol		= "TCP"
+		lb_port							= 10250
+		lb_protocol					= "TCP"
+	}
+
+	listener {
+		instance_port				= 10255
+		instance_protocol		= "TCP"
+		lb_port							= 10255
+		lb_protocol					= "TCP"
+	}
+
+	listener {
+		instance_port				= 10256
+		instance_protocol		= "TCP"
+		lb_port							= 10256
 		lb_protocol					= "TCP"
 	}
 
