@@ -2,7 +2,6 @@
 
 locals {
 	is_public_cluster			= "${var.cluster_public == "true" ? "1" : "0"}"
-	is_nlb_public_cluster	= "${var.cluster_public == "true" ? "false" : "true"}"
 	cluster_zone_id				= "${var.cluster_public == "true" ? data.aws_route53_zone.public.id: data.aws_route53_zone.private.id}"
 	cluster_zone					= "${data.aws_route53_zone.private.name}"
 	cluster_fqdn					= "${var.cluster_name}.${replace(local.cluster_zone, "/[.]$/", "")}"
@@ -125,7 +124,7 @@ data "aws_route53_zone" "private" {
 ################## PLACEMENT GROUPS ##################
 
 resource "random_pet" "placement_cluster" {
-	count				= "${length(data.aws_subnet_ids.pools.ids)}"
+	count				= "3"
 	keepers = {
 		placement = "${var.rename_placement_groups}"
 	}
@@ -133,14 +132,13 @@ resource "random_pet" "placement_cluster" {
 }
 
 resource "aws_placement_group" "cluster" {
-	count				= "${length(data.aws_subnet_ids.pools.ids)}"
+	count				= "3"
 	name				= "${random_pet.placement_cluster.*.id[count.index]}"
 	strategy		= "cluster"
 }
 
 ################## LATEST AMI's (Standard) ##################
 
-# TODO ability to specify a specific AMI
 data "aws_ami" "most_recent_cyvive_generic" {
   most_recent = true
   owners			= ["${local.ami_owner}"]
@@ -157,7 +155,7 @@ data "aws_ami" "most_recent_cyvive_ena_generic" {
 
 ################## SECURITY GROUP ##################
 
-# TODO rename such that pool / pool comes first for sorting / relationships
+# TODO rename such that pool / controller comes first for sorting / relationships
 data "aws_security_group" "hardwired_pools" {
   name        = "${local.name_prefix}-hardwired-pools"
 

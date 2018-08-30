@@ -86,7 +86,7 @@ resource "aws_lb_listener" "control_plane_dashboard_https" {
   }
 }
 
-################## PRIVATE NLB ###################
+################## PRIVATE ELB ###################
 ########### @NODE HEALTH CHECKS & MESH ###########
 
 # Network Load Balancer DNS Record
@@ -171,45 +171,9 @@ resource "aws_elb" "control_plane_private" {
 
 	cross_zone_load_balancing = "true"
 }
-/*
-resource "aws_lb" "healthz" {
-	name               = "${local.name_prefix}-healthz"
-  load_balancer_type = "application"
-  internal           = "true"
-
-  subnets = ["${data.aws_subnet.pools.*.id}"]
-
-  enable_cross_zone_load_balancing = true
-}
-*/
-
-/*
-resource "aws_lb_listener" "control_plane_api_private" {
-  load_balancer_arn = "${aws_lb.healthz.arn}"
-  protocol          = "HTTPS"
-  port              = "6443"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = "${aws_lb_target_group.controllers_private.arn}"
-  }
-}
-*/
-
-/*
-resource "aws_lb_listener" "healthz" {
-  load_balancer_arn = "${aws_lb.healthz.arn}"
-  protocol          = "HTTP"
-  port              = "10256"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = "${aws_lb_target_group.healthz.arn}"
-  }
-}
-*/
 
 ################## TARGET GROUPS ###################
+
 resource "aws_lb_target_group" "controllers_public" {
 	name									= "${local.name_prefix}-controllers-public"
   vpc_id								= "${data.aws_vpc.selected.id}"
@@ -346,6 +310,4 @@ resource "aws_lb_target_group" "healthz" {
     interval						= 10
   }
 }
-
-
 

@@ -2,7 +2,6 @@
 
 locals {
 	is_public_cluster			= "${var.cluster_public == "true" ? "1" : 0}"
-	is_nlb_public_cluster	= "${var.cluster_public == "true" ? "false" : "true"}"
 	cluster_zone_id				= "${var.cluster_public == "true" ? data.aws_route53_zone.public.id: data.aws_route53_zone.private.id}"
 	cluster_zone					= "${data.aws_route53_zone.private.name}"
 	cluster_fqdn					= "${var.cluster_name}.${replace(local.cluster_zone, "/[.]$/", "")}"
@@ -16,28 +15,28 @@ locals {
 
 	name_prefix						=	"cyvive-${var.cluster_name}"
 
-	token_id							= "${var.pool_token}"
+	token_combiner				= "${random_string.tokenA.result}.${random_string.tokenB.result}"
+	token_id							= "${var.pool_token == "" ? local.token_combiner : var.pool_token}"
 
 	init_controller = {
-		/*
 		kubeadm = {
 			entries = {
-				bootstrap.etcd	= "${var.bootstrap_instance}"
-			}
-		},
-		*/
-		kubenode = {
-			entries = {
-				join = {
-					content = "--token ${local.token_id} --discovery-token-unsafe-skip-ca-verification api-${local.cluster_fqdn}:6443"
+				# TODO rename init to etcd
+				/*
+				bootstrap = {
+					content				= ""
+				},
+				*/
+				kubeadm.yaml		= {
+					content				= "${data.template_file.kubeadm.rendered}"
 				},
 				/*
-				disabled = {
-					content = ""
+				terraform.tfvars = {
+					content				= "${data.template_file.terraform_vars.rendered}"
 				},
-				disabledexec = {
-					content = ""
-				}
+				main.tf = {
+					content				= "${data.template_file.terraform_main.rendered}"
+				},
 				*/
 			}
 		},
@@ -54,6 +53,9 @@ locals {
 		/*
 		kubelet = {
 			entries = {
+				disabled = {
+					content = ""
+				},
 				disabledexec = {
 					content = ""
 				}
@@ -63,16 +65,15 @@ locals {
 	}
 }
 
-/*
-BROKEN s3sync container has timing issues it needs to not sync anything until after the kublet fully comes online, just leave disabled and focus on pools for the moment
-*/
-
 ################## VPC INFORMATION ##################
+
+data "aws_region" "current" {}
 
 data "aws_vpc" "selected" {
 	id			= "${var.vpc_id}"
 }
 
+/*
 data "aws_subnet_ids" "ingress" {
 	vpc_id	= "${data.aws_vpc.selected.id}"
 	tags {
@@ -84,6 +85,7 @@ data "aws_subnet" "ingress" {
 	count		= "${length(data.aws_subnet_ids.ingress.ids)}"
 	id			= "${data.aws_subnet_ids.ingress.ids[count.index]}"
 }
+*/
 
 data "aws_subnet_ids" "pools" {
 	vpc_id	= "${data.aws_vpc.selected.id}"
@@ -92,9 +94,28 @@ data "aws_subnet_ids" "pools" {
 	}
 }
 
-data "aws_subnet" "pools" {
-	count		= "${length(data.aws_subnet_ids.pools.ids)}"
-	id			= "${data.aws_subnet_ids.pools.ids[count.index]}"
+data "aws_subnet" "a" {
+	vpc_id						= "${data.aws_vpc.selected.id}"
+	availability_zone	= "${data.aws_region.current.name}a"
+	tags {
+		Cyvive					= "Pools"
+	}
+}
+
+data "aws_subnet" "b" {
+	vpc_id						= "${data.aws_vpc.selected.id}"
+	availability_zone	= "${data.aws_region.current.name}b"
+	tags {
+		Cyvive					= "Pools"
+	}
+}
+
+data "aws_subnet" "c" {
+	vpc_id						= "${data.aws_vpc.selected.id}"
+	availability_zone	= "${data.aws_region.current.name}c"
+	tags {
+		Cyvive					= "Pools"
+	}
 }
 
 ################## ROUTE53 INFORMATION ##################
@@ -185,137 +206,29 @@ data "aws_elb" "control_plane_private" {
 data "aws_s3_bucket" "cluster_config" {
 	bucket							= "${var.s3_config_bucket}"
 }
-/*
+
 data "aws_s3_bucket" "is_private_amis" {
 	count								= "${local.is_private_amis}"
-	bucket							= "${var.bucket_private_amis}"
-}
-/*
-resource "aws_instance" "controller" {
-  count = 1
-  #ami          = "${data.aws_ami.most_recent_cyvive_controller_sd.id}"
-	ami													= "ami-0816b76a"
-  instance_type     = "c4.large"
-  key_name          = "ssh"
-	vpc_security_group_ids = ["sg-4312cf26"]
-	#subnet_id = "subnet-099a536c"
-  associate_public_ip_address = true
-	ebs_block_device {
-		device_name		= "/dev/sdb"
-		volume_size		= "10"
-		delete_on_termination = true
-	}
-	#user_data_base64 = "${base64encode(jsonencode(local.init_controller))}"
-}
-*/
-/*
-resource "aws_instance" "pool" {
-  count = 1
-  ami          = "${data.aws_ami.most_recent_cyvive_controller_sd.id}"
-  instance_type     = "m4.large"
-  key_name          = "ssh"
-	vpc_security_group_ids = ["sg-4312cf26"]
-	#subnet_id = "subnet-099a536c"
-  associate_public_ip_address = true
-	ebs_block_device {
-		device_name		= "/dev/sdb"
-		volume_size		= "10"
-		delete_on_termination = true
-	}
-	tags = {
-		Name	= "${var.cluster_name}-pool-${count.index}"
-	}
-	user_data_base64 = "${base64encode(jsonencode(local.init_pool))}"
-}
-/*
-resource "aws_launch_configuration" "cyvive_controller" {
-  image_id				= "${data.aws_ami.most_recent_cyvive_controller.id}"
-  instance_type		= "${var.controller_type}"
-  key_name        = "${aws_key_pair.ssh.key_name}"
-  security_groups	= ["${aws_security_group.linuxkit.id}"]
-	#iam_instance_profile
-	#user_data_base64
-
-  associate_public_ip_address = true
-
-	ebs_block_device {
-		device_name		= "/dev/sda2"
-		volume_size		= "10"
-	}
-
-	lifecycle {
-    create_before_destroy = true
-  }
-}
-*/
-################## S3 ###################
-/*
-resource "aws_s3_bucket" "cyvive_storage_bucket" {
-	bucket = "${random_pet.cyvive_ami_bucket.id}"
-}
-*/
-################## IAM ##################
-
-/*
-resource "aws_key_pair" "ssh" {
-  key_name   = "ssh"
-  public_key = "${file("~/.ssh/id_rsa.pub")}"
+	bucket							= "${var.s3_private_amis_bucket}"
 }
 
-resource "aws_security_group" "linuxkit" {
-  name    = "linuxkit"
-	vpc_id	= "${var.vpc_id}"
-}
+################## RANDOM TOKEN GENERATION ##################
 
-resource "aws_security_group_rule" "ssh" {
-  type              = "ingress"
-  security_group_id = "${aws_security_group.linuxkit.id}"
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-}
-*/
-# AutoScaling / Rollout Approach
-/*
-data "aws_ami" "most_recent_cyvive_pool" {
-  most_recent = true
-  owners = ["self"]
-	name_regex = "cyvive-pool"
-}
-*/
-
-/*
-resource "aws_launch_configuration" "sample_lc" {
-  image_id = "${data.aws_ami.most_recent_cyvive_controller.id}"
-  instance_type = "${var.pool_type}"
-
-	lifecycle {
-    create_before_destroy = true
-  }
-}
-*/
-
-
-/* Due both sides of conditional logic being checked in < v0.12 this must be pushed in externally
-data "aws_instances" "rolling_update_asg" {
-	count = "${var.rolling_update_asg != "0" ? 1 : 0}"
-	instance_tags {
-		cyvive = "cyvive"
+resource "random_string" "tokenA" {
+	length				= 6
+	special				= false
+	upper					= false
+	keepers	= {
+		pool_token	= "${var.pool_token}"
 	}
 }
-*/
-/*
-data "aws_vpc" "selected" {
-	id = "${var.vpc_id}"
+
+resource "random_string" "tokenB" {
+	length				= 16
+	special				= false
+	upper					= false
+	keepers = {
+		pool_token	= "${var.pool_token}"
+	}
 }
 
-data "aws_subnet_ids" "selected" {
-	vpc_id						= "${data.aws_vpc.selected.id}"
-}
-
-data "aws_subnet" "selected" {
-	count = "${length(data.aws_subnet_ids.selected.ids)}"
-	id		= "${data.aws_subnet_ids.selected.ids[count.index]}"
-}
-*/

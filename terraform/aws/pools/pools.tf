@@ -7,7 +7,7 @@ module "rolling_a" {
 	enable  = "${local.is_upgrade_rolling}"
 	elb_names								= [ "${data.aws_elb.healthz.name}" ]
 	image_id								= "${local.ami_image_a}"
-	pet_placement						=	"${aws_placement_group.cluster.0.name}"
+	pet_placement						=	"${element(aws_placement_group.cluster.*.name, 0)}"
 	pool_name								= "rolling_a"
 	subnet_id								= "${data.aws_subnet.a.id}"
 	ssh_key									= "${local.ssh_key}"
@@ -33,7 +33,7 @@ module "rolling_b" {
 	enable  = "${local.is_upgrade_rolling}"
 	elb_names								= [ "${data.aws_elb.healthz.name}" ]
 	image_id								= "${local.ami_image_b}"
-	pet_placement						=	"${aws_placement_group.cluster.1.name}"
+	pet_placement						=	"${element(aws_placement_group.cluster.*.name, 1)}"
 	pool_name								= "rolling_b"
 	subnet_id								= "${data.aws_subnet.b.id}"
 	ssh_key									= "${local.ssh_key}"
@@ -59,7 +59,7 @@ module "rolling_c" {
 	enable  = "${local.is_upgrade_rolling}"
 	elb_names								= [ "${data.aws_elb.healthz.name}" ]
 	image_id								= "${local.ami_image_c}"
-	pet_placement						=	"${aws_placement_group.cluster.2.name}"
+	pet_placement						=	"${element(aws_placement_group.cluster.*.name, 1)}"
 	pool_name								= "rolling_c"
 	subnet_id								= "${data.aws_subnet.b.id}"
 	ssh_key									= "${local.ssh_key}"
@@ -89,7 +89,7 @@ module "batch_a" {
 	# TODO pass list of instances to use into the module
 	elb_names								= [ "${data.aws_elb.healthz.name}" ]
 	image_id								= "${local.ami_image_a}"
-	pet_placement						=	"${aws_placement_group.cluster.0.name}"
+	pet_placement						=	"${element(aws_placement_group.cluster.*.name, 0)}"
 	pool_name								= "rolling_a"
 	subnet_id								= "${data.aws_subnet.a.id}"
 	ssh_key									= "${local.ssh_key}"
@@ -115,7 +115,7 @@ module "batch_b" {
 	enable  = "${local.is_upgrade_batch}"
 	elb_names								= [ "${data.aws_elb.healthz.name}" ]
 	image_id								= "${local.ami_image_b}"
-	pet_placement						=	"${aws_placement_group.cluster.1.name}"
+	pet_placement						=	"${element(aws_placement_group.cluster.*.name, 1)}"
 	pool_name								= "rolling_b"
 	subnet_id								= "${data.aws_subnet.b.id}"
 	ssh_key									= "${local.ssh_key}"
@@ -141,7 +141,7 @@ module "batch_c" {
 	enable  = "${local.is_upgrade_batch}"
 	elb_names								= [ "${data.aws_elb.healthz.name}" ]
 	image_id								= "${local.ami_image_c}"
-	pet_placement						=	"${aws_placement_group.cluster.2.name}"
+	pet_placement						=	"${element(aws_placement_group.cluster.*.name, 2)}"
 	pool_name								= "rolling_c"
 	subnet_id								= "${data.aws_subnet.c.id}"
 	ssh_key									= "${local.ssh_key}"

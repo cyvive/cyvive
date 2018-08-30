@@ -1,23 +1,3 @@
-################## RANDOM TOKEN GENERATION ##################
-
-resource "random_string" "tokenA" {
-	length				= 6
-	special				= false
-	upper					= false
-	keepers	= {
-		pool_token	= "${var.pool_token}"
-	}
-}
-
-resource "random_string" "tokenB" {
-	length				= 16
-	special				= false
-	upper					= false
-	keepers = {
-		pool_token	= "${var.pool_token}"
-	}
-}
-
 ################## SECURITY GROUPS ##################
 
 resource "aws_security_group" "hardwired_controllers" {
