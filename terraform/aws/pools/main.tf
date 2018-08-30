@@ -28,7 +28,7 @@ locals {
 		kubenode = {
 			entries = {
 				join = {
-					content = "--token ${local.token_id} --discovery-token-unsafe-skip-ca-verification api-${local.cluster_fqdn}:6443"
+					content = "--token ${local.token_id} --discovery-token-unsafe-skip-ca-verification ${local.cluster_fqdn}:6443"
 				}
 			}
 		},
@@ -155,22 +155,21 @@ data "aws_ami" "most_recent_cyvive_ena_generic" {
 
 ################## SECURITY GROUP ##################
 
-# TODO rename such that pool / controller comes first for sorting / relationships
-data "aws_security_group" "hardwired_pools" {
-  name        = "${local.name_prefix}-hardwired-pools"
+data "aws_security_group" "pools" {
+  name        = "${local.name_prefix}-pools"
 
 	vpc_id = "${data.aws_vpc.selected.id}"
 
 	# TODO broken out smaller tag searches to ensure 32 char limit not reached
-  tags = "${map("Name", "${local.name_prefix}-hardwired-pools")}"
+  tags = "${map("Name", "${local.name_prefix}-pools")}"
 }
 
-data "aws_security_group" "linked_pools" {
-  name        = "${local.name_prefix}-linked-pools"
+data "aws_security_group" "intra_cluster" {
+  name        = "${local.name_prefix}-intra"
 
 	vpc_id = "${data.aws_vpc.selected.id}"
 
-  tags = "${map("Name", "${local.name_prefix}-linked-pools")}"
+  tags = "${map("Name", "${local.name_prefix}-intra")}"
 }
 
 ################## IAM PROFILE ##################

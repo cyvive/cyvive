@@ -7,7 +7,7 @@ resource "aws_route53_record" "apiserver" {
 
   #name = "${format("%s.%s.", var.cluster_name, var.dns_zone)}"
 	# TODO strip redundant 'API' from all control plane records as NLB handles the port routing
-	name											= "api-${local.cluster_fqdn}"
+	name											= "${local.cluster_fqdn}"
   type											= "A"
 
   # AWS recommends their special "alias" records for ELBs
@@ -93,7 +93,7 @@ resource "aws_lb_listener" "control_plane_dashboard_https" {
 resource "aws_route53_record" "private_apiserver" {
 	zone_id										= "${data.aws_route53_zone.private.id}"
 
-	name											= "api-${local.cluster_fqdn}"
+	name											= "${local.cluster_fqdn}"
   type											= "A"
 
   # AWS recommends their special "alias" records for ELBs
@@ -108,7 +108,7 @@ resource "aws_elb" "healthz" {
 	name									= "${local.name_prefix}-healthz"
   subnets								= ["${data.aws_subnet.pools.*.id}"]
 	internal							= "true"
-	security_groups				= ["${aws_security_group.hardwired_controllers.id}", "${aws_security_group.hardwired_pools.id}"]
+	security_groups				= [ "${aws_security_group.intra_cluster.id}" ]
 
 	listener {
 		instance_port				= 10256
@@ -132,6 +132,7 @@ resource "aws_elb" "control_plane_private" {
 	name									= "${local.name_prefix}-control-private"
   subnets								= ["${data.aws_subnet.pools.*.id}"]
 	internal							= "true"
+	security_groups				= [ "${aws_security_group.intra_cluster.id}" ]
 
 	listener {
 		instance_port				= 6443
@@ -204,34 +205,6 @@ resource "aws_lb_target_group" "controllers_public" {
   }
 }
 
-resource "aws_lb_target_group" "controllers_private" {
-	name									= "${local.name_prefix}-controllers-private"
-  vpc_id								= "${data.aws_vpc.selected.id}"
-  target_type						= "instance"
-	proxy_protocol_v2			= "false"
-	stickiness {
-		type								= "lb_cookie"
-		enabled							= "false"
-	}
-
-	#deregistration_delay	=	300
-	#slow_start						= 120
-
-  protocol							= "HTTPS"
-  port									= 6443
-
-  # TCP health check for apiserver
-  health_check {
-    protocol						= "HTTP"
-		path								= "/healthz"
-    port								= 10256
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
-    interval						= 30
-  }
-}
-
-
 resource "aws_lb_target_group" "controllers_dashboard_http" {
 	name									= "${local.name_prefix}-dashboard-http"
   vpc_id								= "${data.aws_vpc.selected.id}"
@@ -276,38 +249,6 @@ resource "aws_lb_target_group" "controllers_dashboard_https" {
     healthy_threshold   = 2
     unhealthy_threshold = 2
     interval						= 30
-  }
-}
-
-resource "aws_lb_target_group" "healthz" {
-	name									= "${local.name_prefix}-healthz"
-  vpc_id								= "${data.aws_vpc.selected.id}"
-  target_type						= "instance"
-	proxy_protocol_v2			= "false"
-	stickiness {
-		type								= "lb_cookie"
-		enabled							= "false"
-	}
-
-	#deregistration_delay	=	300
-	#slow_start						= 120
-
-  protocol							= "HTTP"
-  port									= 10256
-
-  # TCP health check for apiserver
-  health_check {
-		protocol						= "HTTP"
-		path								= "/healthz"
-    port								= 10256
-
-    # NLBs required to use same healthy and unhealthy thresholds
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
-
-    # Interval between health checks required to be 10 or 30
-		# TODO upgrade to 30sec healthchecks
-    interval						= 10
   }
 }
 

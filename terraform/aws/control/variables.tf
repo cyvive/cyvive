@@ -61,20 +61,23 @@ variable "s3_private_amis_bucket" {
 	default			= ""
 }
 
-/*
-variable "disk_size" {
+variable "oci_cache_disk_size" {
   type        = "string"
-  default     = "40"
-  description = "Size of the EBS volume in GB"
+  default     = "72"
+  description = "Size of the EBS volume in GB, defaults to 72 (Minimum for 50 node cluster)"
 }
 
-
-variable "disk_type" {
-  type        = "string"
-  default     = "gp2"
+variable "oci_cache_disk_type" {
+	type        = "string"
+	default     = "io1"
   description = "Type of the EBS volume (e.g. standard, gp2, io1)"
 }
-*/
+
+variable "oci_cache_disk_iops" {
+	type        = "string"
+	default     = "3600"
+  description = "(Optional) Number of IOPS required"
+}
 
 variable "pool_price" {
   type        = "string"

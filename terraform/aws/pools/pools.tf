@@ -11,13 +11,13 @@ module "rolling_a" {
 	pool_name								= "rolling_a"
 	subnet_id								= "${data.aws_subnet.a.id}"
 	ssh_key									= "${local.ssh_key}"
-  security_groups					= [	"${data.aws_security_group.hardwired_pools.id}",
-															"${data.aws_security_group.linked_pools.id}"]
+  security_groups					= [	"${data.aws_security_group.intra_cluster.id}",
+															"${data.aws_security_group.pools.id}"]
 	iam_instance_profile		= "${data.aws_iam_instance_profile.pool.name}"
 	user_data_base64				= "${base64encode(jsonencode(local.init_pool))}"
 
 	# TODO tags into CF templates
-  #tags										= "${map("Name", "${local.name_prefix}-hardwired-controllers")}"
+  #tags										= "${map("Name", "${local.name_prefix}-controllers")}"
 
 	# Direct Map from Vars
 	cluster_name						= "${var.cluster_name}"
@@ -37,13 +37,13 @@ module "rolling_b" {
 	pool_name								= "rolling_b"
 	subnet_id								= "${data.aws_subnet.b.id}"
 	ssh_key									= "${local.ssh_key}"
-  security_groups					= [	"${data.aws_security_group.hardwired_pools.id}",
-															"${data.aws_security_group.linked_pools.id}"]
+  security_groups					= [	"${data.aws_security_group.intra_cluster.id}",
+															"${data.aws_security_group.pools.id}"]
 	iam_instance_profile		= "${data.aws_iam_instance_profile.pool.name}"
 	user_data_base64				= "${base64encode(jsonencode(local.init_pool))}"
 
 	# TODO tags into CF templates
-  #tags										= "${map("Name", "${local.name_prefix}-hardwired-controllers")}"
+  #tags										= "${map("Name", "${local.name_prefix}-controllers")}"
 
 	# Direct Map from Vars
 	cluster_name						= "${var.cluster_name}"
@@ -63,13 +63,13 @@ module "rolling_c" {
 	pool_name								= "rolling_c"
 	subnet_id								= "${data.aws_subnet.b.id}"
 	ssh_key									= "${local.ssh_key}"
-  security_groups					= [	"${data.aws_security_group.hardwired_pools.id}",
-															"${data.aws_security_group.linked_pools.id}"]
+  security_groups					= [	"${data.aws_security_group.intra_cluster.id}",
+															"${data.aws_security_group.pools.id}"]
 	iam_instance_profile		= "${data.aws_iam_instance_profile.pool.name}"
 	user_data_base64				= "${base64encode(jsonencode(local.init_pool))}"
 
 	# TODO tags into CF templates
-  #tags										= "${map("Name", "${local.name_prefix}-hardwired-controllers")}"
+  #tags										= "${map("Name", "${local.name_prefix}-controllers")}"
 
 	# Direct Map from Vars
 	cluster_name						= "${var.cluster_name}"
@@ -93,13 +93,13 @@ module "batch_a" {
 	pool_name								= "rolling_a"
 	subnet_id								= "${data.aws_subnet.a.id}"
 	ssh_key									= "${local.ssh_key}"
-  security_groups					= [	"${data.aws_security_group.hardwired_pools.id}",
-															"${data.aws_security_group.linked_pools.id}"]
+  security_groups					= [	"${data.aws_security_group.intra_cluster.id}",
+															"${data.aws_security_group.pools.id}"]
 	iam_instance_profile		= "${data.aws_iam_instance_profile.pool.name}"
 	user_data_base64				= "${base64encode(jsonencode(local.init_pool))}"
 
 	# TODO tags into CF templates
-  #tags										= "${map("Name", "${local.name_prefix}-hardwired-controllers")}"
+  #tags										= "${map("Name", "${local.name_prefix}-controllers")}"
 
 	# Direct Map from Vars
 	cluster_name						= "${var.cluster_name}"
@@ -119,13 +119,13 @@ module "batch_b" {
 	pool_name								= "rolling_b"
 	subnet_id								= "${data.aws_subnet.b.id}"
 	ssh_key									= "${local.ssh_key}"
-  security_groups					= [	"${data.aws_security_group.hardwired_pools.id}",
-															"${data.aws_security_group.linked_pools.id}"]
+  security_groups					= [	"${data.aws_security_group.intra_cluster.id}",
+															"${data.aws_security_group.pools.id}"]
 	iam_instance_profile		= "${data.aws_iam_instance_profile.pool.name}"
 	user_data_base64				= "${base64encode(jsonencode(local.init_pool))}"
 
 	# TODO tags into CF templates
-  #tags										= "${map("Name", "${local.name_prefix}-hardwired-controllers")}"
+  #tags										= "${map("Name", "${local.name_prefix}-controllers")}"
 
 	# Direct Map from Vars
 	cluster_name						= "${var.cluster_name}"
@@ -145,13 +145,13 @@ module "batch_c" {
 	pool_name								= "rolling_c"
 	subnet_id								= "${data.aws_subnet.c.id}"
 	ssh_key									= "${local.ssh_key}"
-  security_groups					= [	"${data.aws_security_group.hardwired_pools.id}",
-															"${data.aws_security_group.linked_pools.id}"]
+  security_groups					= [	"${data.aws_security_group.intra_cluster.id}",
+															"${data.aws_security_group.pools.id}"]
 	iam_instance_profile		= "${data.aws_iam_instance_profile.pool.name}"
 	user_data_base64				= "${base64encode(jsonencode(local.init_pool))}"
 
 	# TODO tags into CF templates
-  #tags										= "${map("Name", "${local.name_prefix}-hardwired-controllers")}"
+  #tags										= "${map("Name", "${local.name_prefix}-controllers")}"
 
 	# Direct Map from Vars
 	cluster_name						= "${var.cluster_name}"

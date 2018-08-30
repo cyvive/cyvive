@@ -13,6 +13,8 @@ locals {
 	is_ssh								= "${var.ssh_enabled == "0" ? 0 : 1}"
 	ssh_key								= "${var.ssh_enabled == "0" ? "" : var.ssh_authorized_key}"
 
+	enabled_cidrs					= "${compact(concat(data.aws_subnet.ingress.*.cidr_block, data.aws_subnet.pools.*.cidr_block, var.authorized_external_cidrs))}"
+
 	name_prefix						=	"cyvive-${var.cluster_name}"
 }
 

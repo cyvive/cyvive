@@ -30,23 +30,25 @@ data "template_file" "terraform_vars" {
   template										= "${file("templates/terraform_vars.tpl")}"
 	vars {
 		lb_arn										= "${aws_lb.healthz.arn}"
-		target_group_arn					= "${aws_lb_target_group.controllers_private.arn}"
   }
 }
 */
 
 resource "aws_instance" "controller_a" {
 	ami													= "${data.aws_ami.most_recent_cyvive_generic.id}"
-  instance_type								= "m4.large"
+  instance_type								= "${var.controller_type}"
   key_name										= "${local.ssh_key}"
-	vpc_security_group_ids			= ["sg-8514c9e0"]
-	#vpc_security_group_ids			= ["${aws_security_group.hardwired_controllers.id}", "${aws_security_group.linked_controllers.id}"]
-	#subnet_id = "subnet-099a536c"
+	#vpc_security_group_ids			= ["sg-8514c9e0"]
+	vpc_security_group_ids			= [ "${data.aws_security_group.intra_cluster.id}",
+																	"${data.aws_security_group.controllers.id}" ]
+	subnet_id = "subnet-099a536c"
   associate_public_ip_address = true
 	ebs_block_device {
 		device_name								= "/dev/sdb"
-		volume_size								= "10"
-		delete_on_termination			= true
+		volume_size								= "${var.oci_cache_disk_size}"
+		volume_type								=	"${var.oci_cache_disk_type}"
+		iops											= "${var.oci_cache_disk_iops}"
+		encrypted									= true
 	}
 	iam_instance_profile				= "${data.aws_iam_instance_profile.controller.name}"
 	tags = {
@@ -59,6 +61,18 @@ resource "aws_instance" "controller_a" {
 resource "aws_lb_target_group_attachment" "controller_a_public" {
 	count							= "${local.is_public_cluster}"
   target_group_arn	= "${data.aws_lb_target_group.controllers_public.arn}"
+  target_id					= "${aws_instance.controller_a.id}"
+}
+
+resource "aws_lb_target_group_attachment" "controller_a_dashboard" {
+	count							= "${local.is_public_cluster}"
+  target_group_arn	= "${data.aws_lb_target_group.controllers_dashboard_http.arn}"
+  target_id					= "${aws_instance.controller_a.id}"
+}
+
+resource "aws_lb_target_group_attachment" "controller_a_dashboard_https" {
+	count							= "${local.is_public_cluster}"
+  target_group_arn	= "${data.aws_lb_target_group.controllers_dashboard_https.arn}"
   target_id					= "${aws_instance.controller_a.id}"
 }
 

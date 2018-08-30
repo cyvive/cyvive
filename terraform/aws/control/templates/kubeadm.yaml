@@ -3,11 +3,11 @@ kind: MasterConfiguration
 # TODO specify kubernetesVersion to install through the stack (including AMI names)
 kubernetesVersion: v1.11.1
 apiServerCertSANs:
-  - "api-${cluster_fqdn}"
+  - "${cluster_fqdn}"
 api:
   # advertiseAddress: 192.168.0.102
   # bindPort: 6443
-  controlPlaneEndpoint: api-${cluster_fqdn}
+  controlPlaneEndpoint: ${cluster_fqdn}
 auditPolicy:
   logDir: /var/log/kubernetes/audit
   logMaxAge: 2

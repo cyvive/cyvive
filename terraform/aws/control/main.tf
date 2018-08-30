@@ -164,20 +164,20 @@ data "aws_ami" "most_recent_cyvive_ena_generic" {
 
 ################## SECURITY GROUP ##################
 
-data "aws_security_group" "hardwired_controllers" {
-  name        = "${local.name_prefix}-hardwired-controllers"
+data "aws_security_group" "controllers" {
+  name        = "${local.name_prefix}-controllers"
 
 	vpc_id = "${data.aws_vpc.selected.id}"
 
-  tags = "${map("Name", "${local.name_prefix}-hardwired-controllers")}"
+  tags = "${map("Name", "${local.name_prefix}-controllers")}"
 }
 
-data "aws_security_group" "linked_controllers" {
-  name        = "${local.name_prefix}-linked-controllers"
+data "aws_security_group" "intra_cluster" {
+  name        = "${local.name_prefix}-intra"
 
 	vpc_id = "${data.aws_vpc.selected.id}"
 
-  tags = "${map("Name", "${local.name_prefix}-linked-controllers")}"
+  tags = "${map("Name", "${local.name_prefix}-intra")}"
 }
 
 ################## IAM PROFILE ##################
@@ -191,6 +191,16 @@ data "aws_iam_instance_profile" "controller" {
 data "aws_lb_target_group" "controllers_public" {
 	count									= "${local.is_public_cluster}"
 	name									= "${local.name_prefix}-controllers-public"
+}
+
+data "aws_lb_target_group" "controllers_dashboard_http" {
+	count									= "${local.is_public_cluster}"
+	name									= "${local.name_prefix}-dashboard-http"
+}
+
+data "aws_lb_target_group" "controllers_dashboard_https" {
+	count									= "${local.is_public_cluster}"
+	name									= "${local.name_prefix}-dashboard-https"
 }
 
 data "aws_elb" "healthz" {
