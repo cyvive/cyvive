@@ -17,6 +17,10 @@ locals {
 	is_upgrade_rolling		= "${var.rolling_upgrades == "true" ? "true" : "false"}"
 	is_upgrade_batch			= "${var.rolling_upgrades == "true" ? "false" : "true"}"
 
+	ami_image_a						= "${var.ami_image_a == "" ? data.aws_ami.most_recent_cyvive_generic.id : var.ami_image_a}"
+	ami_image_b						= "${var.ami_image_b == "" ? data.aws_ami.most_recent_cyvive_generic.id : var.ami_image_b}"
+	ami_image_c						= "${var.ami_image_b == "" ? data.aws_ami.most_recent_cyvive_generic.id : var.ami_image_c}"
+
 	name_prefix						=	"cyvive-${var.cluster_name}"
 
 	token_id							= "${var.pool_token}"

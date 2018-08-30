@@ -137,19 +137,19 @@ variable "vpc_id" {
 variable "ami_image_a" {
 	description = "AMI Image to apply to the AZ, if not specified then latest AMI compatible AMI will be used automatically"
 	type				= "string"
-	default			= "atcreated"
+	default			= ""
 }
 
 variable "ami_image_b" {
 	description = "AMI Image to apply to the AZ, if not specified then latest AMI compatible AMI will be used automatically"
 	type				= "string"
-	default			= "atcreated"
+	default			= ""
 }
 
 variable "ami_image_c" {
 	description = "AMI Image to apply to the AZ, if not specified then latest AMI compatible AMI will be used automatically"
 	type				= "string"
-	default			= "atcreated"
+	default			= ""
 }
 
 # Rolling or Batch Upgrades
