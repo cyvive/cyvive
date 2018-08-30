@@ -95,6 +95,22 @@ data "aws_subnet" "a" {
 	}
 }
 
+data "aws_subnet" "b" {
+	vpc_id						= "${data.aws_vpc.selected.id}"
+	availability_zone	= "${data.aws_region.current.name}b"
+	tags {
+		Cyvive					= "Pools"
+	}
+}
+
+data "aws_subnet" "c" {
+	vpc_id						= "${data.aws_vpc.selected.id}"
+	availability_zone	= "${data.aws_region.current.name}c"
+	tags {
+		Cyvive					= "Pools"
+	}
+}
+
 ################## ROUTE53 INFORMATION ##################
 
 data "aws_route53_zone" "public" {
