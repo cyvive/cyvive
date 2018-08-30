@@ -24,7 +24,6 @@ resource "aws_launch_configuration" "per_instance" {
   }
 }
 
-# TODO WaitOnResourceSignals disabled until cfn-signal / ELB integration completed
 resource "aws_cloudformation_stack" "per_instance" {
 	count			= "${var.enable == "true" ? length(var.instance_types) : 0}"
 
@@ -97,7 +96,7 @@ resource "aws_cloudformation_stack" "per_instance" {
       "UpdatePolicy": {
         "AutoScalingRollingUpdate": {
 					"MinInstancesInService": { "Ref": "MinInstancesInService" },
-					"WaitOnResourceSignals": "false",
+					"WaitOnResourceSignals": "true",
           "MaxBatchSize": "1",
           "PauseTime": { "Ref": "UpdatePauseTime" }
         }
