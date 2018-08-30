@@ -5,13 +5,11 @@ module "rolling_a" {
 	source	= "upgrades_rolling"
 
 	enable  = "${local.is_upgrade_rolling}"
-	# TODO move launch_configuration into the module
-	# TODO pass list of instances to use into the module
 	elb_names								= [ "${data.aws_elb.healthz.name}" ]
 	image_id								= "${local.ami_image_a}"
 	pet_placement						=	"${aws_placement_group.cluster.0.name}"
 	pool_name								= "rolling_a"
-	subnet_id								= "${data.aws_subnet.pools.0.id}"
+	subnet_id								= "${data.aws_subnet.a.id}"
 	ssh_key									= "${local.ssh_key}"
   security_groups					= [	"${data.aws_security_group.hardwired_pools.id}",
 															"${data.aws_security_group.linked_pools.id}"]
@@ -41,7 +39,7 @@ module "batch_a" {
 	image_id								= "${local.ami_image_a}"
 	pet_placement						=	"${aws_placement_group.cluster.0.name}"
 	pool_name								= "rolling_a"
-	subnet_id								= "${data.aws_subnet.pools.0.id}"
+	subnet_id								= "${data.aws_subnet.a.id}"
 	ssh_key									= "${local.ssh_key}"
   security_groups					= [	"${data.aws_security_group.hardwired_pools.id}",
 															"${data.aws_security_group.linked_pools.id}"]

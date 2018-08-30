@@ -60,10 +60,13 @@ locals {
 
 ################## VPC INFORMATION ##################
 
+data "aws_region" "current" {}
+
 data "aws_vpc" "selected" {
 	id			= "${var.vpc_id}"
 }
 
+/*
 data "aws_subnet_ids" "ingress" {
 	vpc_id	= "${data.aws_vpc.selected.id}"
 	tags {
@@ -75,6 +78,7 @@ data "aws_subnet" "ingress" {
 	count		= "${length(data.aws_subnet_ids.ingress.ids)}"
 	id			= "${data.aws_subnet_ids.ingress.ids[count.index]}"
 }
+*/
 
 data "aws_subnet_ids" "pools" {
 	vpc_id	= "${data.aws_vpc.selected.id}"
@@ -83,9 +87,12 @@ data "aws_subnet_ids" "pools" {
 	}
 }
 
-data "aws_subnet" "pools" {
-	count		= "${length(data.aws_subnet_ids.pools.ids)}"
-	id			= "${data.aws_subnet_ids.pools.ids[count.index]}"
+data "aws_subnet" "a" {
+	vpc_id						= "${data.aws_vpc.selected.id}"
+	availability_zone	= "${data.aws_region.current.name}a"
+	tags {
+		Cyvive					= "Pools"
+	}
 }
 
 ################## ROUTE53 INFORMATION ##################
