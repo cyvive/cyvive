@@ -1,174 +1,175 @@
-# Select latest controller AMI
-/*
-data "aws_ami" "most_recent_cyvive_controller_ena" {
-  most_recent = true
-  owners = ["self"]
-	name_regex = "cyvive-ena-controller"
-}
-*/
-data "aws_ami" "most_recent_cyvive_controller_sd" {
-  most_recent = true
-  owners = ["self"]
-	name_regex = "cyvive-controller"
-}
-
-/* Disabled until kubeadm join supports it
-data "template_file" "kubecontrol" {
-	template = "${file("templates/kubecontrol.yaml")}"
-	vars {
-		token_id = "${local.token_id}"
-		bootstrap = "${aws_instance.bootstrap.private_ip}:6443"
-	}
-}
-
-data "template_file" "kubenode" {
-	template = "${file("templates/kubenode.yaml")}"
-	vars {
-		token_id = "${local.token_id}"
-		bootstrap = "${aws_instance.bootstrap.private_ip}:6443"
-	}
-}
-*/
+################## LOCALS ##################
 
 locals {
-	cluster_zone = "${var.cluster_public == "true" ? data.aws_route53_zone.public.name : data.aws_route53_zone.private.name}"
-	cluster_fqdn = "${var.cluster_name}.${replace(local.cluster_zone, "/[.]$/", "")}"
-	init_controller = {
-		kubeadm = {
-			entries = {
-				join = {
-					content = "--token ${local.token_id} --discovery-token-unsafe-skip-ca-verification ${aws_instance.bootstrap.private_ip}:6443"
-				},
-				/* Currently disabled due to a bug in kubeadm join --config where its still enforcing DockerShim
-				kubeadm.yaml = {
-					content = "${data.template_file.kubecontrol.rendered}"
-				}
-				*/
-			}
-		}
-	}
+	is_public_cluster			= "${var.cluster_public == "true" ? "1" : "0"}"
+	is_nlb_public_cluster	= "${var.cluster_public == "true" ? "false" : "true"}"
+	cluster_zone_id				= "${var.cluster_public == "true" ? data.aws_route53_zone.public.id: data.aws_route53_zone.private.id}"
+	cluster_zone					= "${data.aws_route53_zone.private.name}"
+	cluster_fqdn					= "${var.cluster_name}.${replace(local.cluster_zone, "/[.]$/", "")}"
+
+	is_private_amis				= "${var.s3_private_amis_bucket == "" ? 0 : 1}"
+	is_public_amis				= "${var.s3_private_amis_bucket == "" ? 1 : 0}"
+	ami_owner							= "${var.s3_private_amis_bucket == "" ? "self" : "742773893669"}"
+
+	is_ssh								= "${var.ssh_enabled == "0" ? 0 : 1}"
+	ssh_key								= "${var.ssh_enabled == "0" ? "" : var.ssh_authorized_key}"
+
+	is_upgrade_rolling		= "${var.rolling_upgrades == "true" ? "true" : "false"}"
+	is_upgrade_batch			= "${var.rolling_upgrades == "true" ? "false" : "true"}"
+
+	name_prefix						=	"cyvive-${var.cluster_name}"
+
+	token_id							= "${var.pool_token}"
+
 	init_pool = {
 		kubenode = {
 			entries = {
 				join = {
-					content = "--token ${local.token_id} --discovery-token-unsafe-skip-ca-verification ${aws_instance.bootstrap.private_ip}:6443"
+					content = "--token ${local.token_id} --discovery-token-unsafe-skip-ca-verification api-${local.cluster_fqdn}:6443"
+				}
+			}
+		},
+		cyvive = {
+			entries = {
+				s3config				= {
+					content				= "s3://${var.s3_config_bucket}/kubeadm"
 				},
-				/* Currently disabled due to a bug in kubeadm join --config where its still enforcing DockerShim
-				config.yaml = {
-					content = "${data.template_file.kubenode.rendered}"
+				cluster.fqdn = {
+					content				=	"${local.cluster_fqdn}"
+				}
+			}
+		},
+		/*
+		kubelet = {
+			entries = {
+				disabled = {
+					content = ""
 				},
-				*/
+				disabledexec = {
+					content = ""
+				}
 			}
 		}
+		*/
 	}
 }
 
-/*
-resource "aws_instance" "controller" {
-  count = 1
-  #ami          = "${data.aws_ami.most_recent_cyvive_controller_sd.id}"
-	ami													= "ami-0816b76a"
-  instance_type     = "c4.large"
-  key_name          = "ssh"
-	vpc_security_group_ids = ["sg-4312cf26"]
-	#subnet_id = "subnet-099a536c"
-  associate_public_ip_address = true
-	ebs_block_device {
-		device_name		= "/dev/sdb"
-		volume_size		= "10"
-		delete_on_termination = true
+################## VPC INFORMATION ##################
+
+data "aws_vpc" "selected" {
+	id			= "${var.vpc_id}"
+}
+
+data "aws_subnet_ids" "ingress" {
+	vpc_id	= "${data.aws_vpc.selected.id}"
+	tags {
+		Cyvive	= "Ingress"
 	}
-	#user_data_base64 = "${base64encode(jsonencode(local.init_controller))}"
 }
-*/
-/*
-resource "aws_instance" "pool" {
-  count = 1
-  ami          = "${data.aws_ami.most_recent_cyvive_controller_sd.id}"
-  instance_type     = "m4.large"
-  key_name          = "ssh"
-	vpc_security_group_ids = ["sg-4312cf26"]
-	#subnet_id = "subnet-099a536c"
-  associate_public_ip_address = true
-	ebs_block_device {
-		device_name		= "/dev/sdb"
-		volume_size		= "10"
-		delete_on_termination = true
+
+data "aws_subnet" "ingress" {
+	count		= "${length(data.aws_subnet_ids.ingress.ids)}"
+	id			= "${data.aws_subnet_ids.ingress.ids[count.index]}"
+}
+
+data "aws_subnet_ids" "pools" {
+	vpc_id	= "${data.aws_vpc.selected.id}"
+	tags {
+		Cyvive	= "Pools"
 	}
-	tags = {
-		Name	= "${var.cluster_name}-pool-${count.index}"
+}
+
+data "aws_subnet" "pools" {
+	count		= "${length(data.aws_subnet_ids.pools.ids)}"
+	id			= "${data.aws_subnet_ids.pools.ids[count.index]}"
+}
+
+################## ROUTE53 INFORMATION ##################
+
+data "aws_route53_zone" "public" {
+	name					= "${var.dns_zone}"
+}
+
+data "aws_route53_zone" "private" {
+	name					= "${var.dns_zone}"
+	private_zone	= "true"
+}
+
+################## PLACEMENT GROUPS ##################
+
+resource "random_pet" "placement_cluster" {
+	count				= "${length(data.aws_subnet_ids.pools.ids)}"
+	keepers = {
+		placement = "${var.rename_placement_groups}"
 	}
-	user_data_base64 = "${base64encode(jsonencode(local.init_pool))}"
-}
-/*
-resource "aws_launch_configuration" "cyvive_controller" {
-  image_id				= "${data.aws_ami.most_recent_cyvive_controller.id}"
-  instance_type		= "${var.controller_type}"
-  key_name        = "${aws_key_pair.ssh.key_name}"
-  security_groups	= ["${aws_security_group.linuxkit.id}"]
-	#iam_instance_profile
-	#user_data_base64
-
-  associate_public_ip_address = true
-
-	ebs_block_device {
-		device_name		= "/dev/sda2"
-		volume_size		= "10"
-	}
-
-	lifecycle {
-    create_before_destroy = true
-  }
-}
-*/
-################## S3 ###################
-/*
-resource "aws_s3_bucket" "cyvive_storage_bucket" {
-	bucket = "${random_pet.cyvive_ami_bucket.id}"
-}
-*/
-################## IAM ##################
-
-/*
-resource "aws_key_pair" "ssh" {
-  key_name   = "ssh"
-  public_key = "${file("~/.ssh/id_rsa.pub")}"
+	prefix			= "${local.name_prefix}-pool"
 }
 
-resource "aws_security_group" "linuxkit" {
-  name    = "linuxkit"
-	vpc_id	= "${var.vpc_id}"
+resource "aws_placement_group" "cluster" {
+	count				= "${length(data.aws_subnet_ids.pools.ids)}"
+	name				= "${random_pet.placement_cluster.*.id[count.index]}"
+	strategy		= "cluster"
 }
 
-resource "aws_security_group_rule" "ssh" {
-  type              = "ingress"
-  security_group_id = "${aws_security_group.linuxkit.id}"
-  from_port         = 22
-  to_port           = 22
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-}
-*/
-# AutoScaling / Rollout Approach
-/*
-data "aws_ami" "most_recent_cyvive_pool" {
+################## LATEST AMI's (Standard) ##################
+
+# TODO ability to specify a specific AMI
+data "aws_ami" "most_recent_cyvive_generic" {
   most_recent = true
-  owners = ["self"]
-	name_regex = "cyvive-pool"
+  owners			= ["${local.ami_owner}"]
+	name_regex	= "cyvive-generic"
 }
-*/
 
-/*
-resource "aws_launch_configuration" "sample_lc" {
-  image_id = "${data.aws_ami.most_recent_cyvive_controller.id}"
-  instance_type = "${var.pool_type}"
+################## LATEST AMI's (ENA) ##################
 
-	lifecycle {
-    create_before_destroy = true
-  }
+data "aws_ami" "most_recent_cyvive_ena_generic" {
+  most_recent = true
+  owners			= ["${local.ami_owner}"]
+	name_regex	= "cyvive-ena-generic"
 }
-*/
 
+################## SECURITY GROUP ##################
+
+# TODO rename such that pool / pool comes first for sorting / relationships
+data "aws_security_group" "hardwired_pools" {
+  name        = "${local.name_prefix}-hardwired-pools"
+
+	vpc_id = "${data.aws_vpc.selected.id}"
+
+	# TODO broken out smaller tag searches to ensure 32 char limit not reached
+  tags = "${map("Name", "${local.name_prefix}-hardwired-pools")}"
+}
+
+data "aws_security_group" "linked_pools" {
+  name        = "${local.name_prefix}-linked-pools"
+
+	vpc_id = "${data.aws_vpc.selected.id}"
+
+  tags = "${map("Name", "${local.name_prefix}-linked-pools")}"
+}
+
+################## IAM PROFILE ##################
+
+data "aws_iam_instance_profile" "pool" {
+	name	= "${local.name_prefix}-pool"
+}
+
+################## LOAD BALANCERS ##################
+
+data "aws_elb" "healthz" {
+	name									= "${local.name_prefix}-healthz"
+}
+
+################## S3 BUCKETS ##################
+
+data "aws_s3_bucket" "cluster_config" {
+	bucket							= "${var.s3_config_bucket}"
+}
+
+data "aws_s3_bucket" "is_private_amis" {
+	count								= "${local.is_private_amis}"
+	bucket							= "${var.s3_private_amis_bucket}"
+}
 
 /* Due both sides of conditional logic being checked in < v0.12 this must be pushed in externally
 data "aws_instances" "rolling_update_asg" {

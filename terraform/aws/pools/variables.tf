@@ -42,10 +42,16 @@ variable "controller_type" {
   description = "EC2 instance type for controllers"
 }
 
-variable "pool_type" {
-  type        = "string"
-  default     = "c5.large"
-  description = "EC2 instance type for pools"
+variable "instance_types" {
+  type        = "list"
+  default     = ["m4.large"]
+  description = "Enabled instance types for Pools to use"
+}
+
+variable "instance_types_ena" {
+  type        = "list"
+  default     = ["c5.large"]
+  description = "Enabled instance types for Pools to use"
 }
 
 variable "pool_maximum_size" {
@@ -55,20 +61,23 @@ variable "pool_maximum_size" {
 }
 
 # Storage
-/*
-variable "disk_size" {
+variable "s3_private_amis_bucket" {
+	type				= "string"
+	description	= "Name of private S3 bucket for in-house built AMI's be used instead of Cyvive's standard one (not necessary for most installs)"
+	default			= ""
+}
+
+variable "oci_cache_disk_size" {
   type        = "string"
   default     = "40"
   description = "Size of the EBS volume in GB"
 }
 
-
-variable "disk_type" {
+variable "oci_cache_disk_type" {
   type        = "string"
-  default     = "gp2"
+  default     = "standard"
   description = "Type of the EBS volume (e.g. standard, gp2, io1)"
 }
-*/
 
 variable "pool_price" {
   type        = "string"
@@ -77,12 +86,19 @@ variable "pool_price" {
 }
 
 # configuration
-/*
-variable "ssh_authorized_key" {
-  type        = "string"
-  description = "SSH public key for user 'core'"
+variable "ssh_enabled" {
+	type				= "string"
+	default			= "0"
+	description	= "SSH Access is disabled by default on all instances as its unecessary due to Cyvive's architecture. Strongly suggested not to enable this functionality"
 }
 
+variable "ssh_authorized_key" {
+  type        = "string"
+	default			=	""
+  description = "SSH Key Name for instance access (disabled by default)"
+}
+
+/*
 variable "asset_dir" {
   description = "Path to a directory where generated assets should be placed (contains secrets)"
   type        = "string"
@@ -117,6 +133,32 @@ variable "vpc_id" {
 	type				= "string"
 }
 
+# Recreate Triggers
+variable "ami_image_a" {
+	description = "AMI Image to apply to the AZ, if not specified then latest AMI compatible AMI will be used automatically"
+	type				= "string"
+	default			= "atcreated"
+}
+
+variable "ami_image_b" {
+	description = "AMI Image to apply to the AZ, if not specified then latest AMI compatible AMI will be used automatically"
+	type				= "string"
+	default			= "atcreated"
+}
+
+variable "ami_image_c" {
+	description = "AMI Image to apply to the AZ, if not specified then latest AMI compatible AMI will be used automatically"
+	type				= "string"
+	default			= "atcreated"
+}
+
+# Rolling or Batch Upgrades
+variable "rolling_upgrades" {
+	description = "(Dragons) Cyvive is rolling upgrade per pool aware, setting this to false will bulk roll out node upgrades when triggered instead of one by one"
+	type				= "string"
+	default			= "true"
+}
+
 # CLI (Advanced)
 variable "rename_placement_groups" {
 	description = "(Dragons) Value keys a random renaming of placement groups"
@@ -132,5 +174,10 @@ variable "min_alive_instances" {
 variable "pool_token" {
 	description = "Persistent machine token used for nodes in ASG's to auto register with cluster. Must be of the form '[a-z0-9]{6}.[a-z0-9]{16}'"
 	type				= "string"
-	default			= ""
 }
+
+variable "s3_config_bucket" {
+	type				= "string"
+	description	= "Name of S3 bucket for Cyvive's terraform & control plane storage"
+}
+
