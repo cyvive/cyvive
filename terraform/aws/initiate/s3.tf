@@ -5,7 +5,7 @@ resource "random_pet" "is_private_amis" {
 	keepers = {
 		bucket						= "${var.cluster_name}"
 	}
-	prefix							= "cyvive-ami-${local.name_prefix}"
+	prefix							= "cyvive-ami-${var.cluster_name}"
 }
 
 data "template_file" "s3_amis_policy" {
@@ -42,7 +42,7 @@ resource "random_pet" "cluster_config_bucket" {
 	keepers = {
 		bucket						= "${var.cluster_name}"
 	}
-	prefix							= "cyvive-config-${local.name_prefix}"
+	prefix							= "cyvive-config-${var.cluster_name}"
 }
 
 resource "aws_s3_bucket" "cluster_config" {
