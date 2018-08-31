@@ -8,7 +8,7 @@ locals {
 
 	is_private_amis				= "${var.s3_private_amis_bucket == "" ? 0 : 1}"
 	is_public_amis				= "${var.s3_private_amis_bucket == "" ? 1 : 0}"
-	ami_owner							= "${var.s3_private_amis_bucket == "" ? "self" : "742773893669"}"
+	ami_owner							= "${var.s3_private_amis_bucket == "" ? "742773893669" : "self"}"
 
 	is_ssh								= "${var.ssh_enabled == "0" ? 0 : 1}"
 	ssh_key								= "${var.ssh_enabled == "0" ? "" : var.ssh_authorized_key}"
