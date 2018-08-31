@@ -16,6 +16,7 @@ data "template_file" "kubeadm" {
     token_id									= "${local.token_id}"
 		cluster_domain						= "${var.cluster_domain_suffix}"
 		cluster_fqdn							=	"${local.cluster_fqdn}"
+		debug_subdomain						=	"debug."
   }
 }
 
@@ -83,6 +84,18 @@ resource "aws_elb_attachment" "controller_a_private" {
 
 resource "aws_elb_attachment" "controller_a_healthz" {
 	elb				= "${data.aws_elb.healthz.id}"
+	instance	= "${aws_instance.controller_a.id}"
+}
+
+resource "aws_elb_attachment" "debug_private" {
+	count			= "${local.debug}"
+	elb				= "${data.aws_elb.debug_private.id}"
+	instance	= "${aws_instance.controller_a.id}"
+}
+
+resource "aws_elb_attachment" "debug_public" {
+	count			= "${local.debug}"
+	elb				= "${data.aws_elb.debug_public.id}"
 	instance	= "${aws_instance.controller_a.id}"
 }
 

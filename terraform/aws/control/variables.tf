@@ -156,3 +156,8 @@ variable "s3_config_bucket" {
 	description	= "Name of S3 bucket for Cyvive's terraform & control plane storage"
 }
 
+variable "debug" {
+	description = "(Dragons) enables debug functionality - api.{cluster_name}.{dns_zone}:443"
+	type				= "string"
+	default			= "false"
+}

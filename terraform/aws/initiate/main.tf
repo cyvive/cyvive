@@ -15,6 +15,9 @@ locals {
 
 	enabled_cidrs					= "${compact(concat(data.aws_subnet.ingress.*.cidr_block, data.aws_subnet.pools.*.cidr_block, var.authorized_external_cidrs))}"
 
+	debug									= "${var.debug == "true" ? 1 : 0}"
+	debug_subdomain				= "${var.debug == "true" ? "debug." : ""}"
+
 	name_prefix						=	"cyvive-${var.cluster_name}"
 }
 

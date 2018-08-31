@@ -130,3 +130,8 @@ variable "pool_token" {
 	default			= ""
 }
 
+variable "debug" {
+	description = "(Dragons) enables debug functionality - api.{cluster_name}.{dns_zone}:443"
+	type				= "string"
+	default			= "false"
+}

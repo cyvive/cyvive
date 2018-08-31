@@ -4,6 +4,7 @@ kind: MasterConfiguration
 kubernetesVersion: v1.11.1
 apiServerCertSANs:
   - "${cluster_fqdn}"
+  - "${debug_subdomain}${cluster_fqdn}"
 api:
   # advertiseAddress: 192.168.0.102
   # bindPort: 6443

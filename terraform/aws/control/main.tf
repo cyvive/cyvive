@@ -13,6 +13,9 @@ locals {
 	is_ssh								= "${var.ssh_enabled == "0" ? 0 : 1}"
 	ssh_key								= "${var.ssh_enabled == "0" ? "" : var.ssh_authorized_key}"
 
+	debug									= "${var.debug == "true" ? 1 : 0}"
+	debug_subdomain				= "${var.debug == "true" ? "debug." : ""}"
+
 	name_prefix						=	"cyvive-${var.cluster_name}"
 
 	token_combiner				= "${random_string.tokenA.result}.${random_string.tokenB.result}"
@@ -209,6 +212,16 @@ data "aws_elb" "healthz" {
 
 data "aws_elb" "control_plane_private" {
 	name									= "${local.name_prefix}-control-private"
+}
+
+data "aws_elb" "debug_private" {
+	count									=	"${local.debug}"
+	name									= "${local.name_prefix}-debug-private"
+}
+
+data "aws_elb" "debug_public" {
+	count									=	"${local.debug * local.is_public_cluster}"
+	name									= "${local.name_prefix}-debug-public"
 }
 
 ################## S3 BUCKETS ##################
