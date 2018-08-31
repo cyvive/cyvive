@@ -41,7 +41,7 @@ resource "aws_instance" "controller_a" {
 	#vpc_security_group_ids			= ["sg-8514c9e0"]
 	vpc_security_group_ids			= [ "${data.aws_security_group.intra_cluster.id}",
 																	"${data.aws_security_group.controllers.id}" ]
-	subnet_id = "subnet-099a536c"
+	subnet_id										= "${data.subnet_id.a}"
   associate_public_ip_address = true
 	ebs_block_device {
 		device_name								= "/dev/sdb"
