@@ -147,6 +147,7 @@ variable "min_alive_instances" {
 
 variable "pool_token" {
 	description = "Persistent machine token used for nodes in ASG's to auto register with cluster. Must be of the form '[a-z0-9]{6}.[a-z0-9]{16}'"
+	default			= ""
 	type				= "string"
 }
 
