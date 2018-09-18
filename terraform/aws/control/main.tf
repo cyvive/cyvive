@@ -33,6 +33,9 @@ locals {
 				kubeadm.yaml		= {
 					content				= "${data.template_file.kubeadm.rendered}"
 				},
+				etcd						= {
+					content				=	""
+				},
 				/*
 				terraform.tfvars = {
 					content				= "${data.template_file.terraform_vars.rendered}"
@@ -151,18 +154,19 @@ resource "aws_placement_group" "spread" {
 
 ################## LATEST AMI's (Standard) ##################
 
-data "aws_ami" "most_recent_cyvive_generic" {
+# HERER UPDATE everywhere the generic removal
+data "aws_ami" "most_recent_cyvive" {
   most_recent = true
   owners			= ["${local.ami_owner}"]
-	name_regex	= "cyvive-generic"
+	name_regex	= "cyvive-kubernetes"
 }
 
 ################## LATEST AMI's (ENA) ##################
 
-data "aws_ami" "most_recent_cyvive_ena_generic" {
+data "aws_ami" "most_recent_cyvive_ena" {
   most_recent = true
   owners			= ["${local.ami_owner}"]
-	name_regex	= "cyvive-ena-generic"
+	name_regex	= "cyvive-ena-kubernetes"
 }
 
 ################## SECURITY GROUP ##################

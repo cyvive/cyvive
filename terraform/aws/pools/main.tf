@@ -16,9 +16,9 @@ locals {
 	is_upgrade_rolling		= "${var.rolling_upgrades == "true" ? "true" : "false"}"
 	is_upgrade_batch			= "${var.rolling_upgrades == "true" ? "false" : "true"}"
 
-	ami_image_a						= "${var.ami_image_a == "" ? data.aws_ami.most_recent_cyvive_generic.id : var.ami_image_a}"
-	ami_image_b						= "${var.ami_image_b == "" ? data.aws_ami.most_recent_cyvive_generic.id : var.ami_image_b}"
-	ami_image_c						= "${var.ami_image_b == "" ? data.aws_ami.most_recent_cyvive_generic.id : var.ami_image_c}"
+	ami_image_a						= "${var.ami_image_a == "" ? data.aws_ami.most_recent_cyvive.id : var.ami_image_a}"
+	ami_image_b						= "${var.ami_image_b == "" ? data.aws_ami.most_recent_cyvive.id : var.ami_image_b}"
+	ami_image_c						= "${var.ami_image_b == "" ? data.aws_ami.most_recent_cyvive.id : var.ami_image_c}"
 
 	name_prefix						=	"cyvive-${var.cluster_name}"
 
@@ -139,18 +139,18 @@ resource "aws_placement_group" "cluster" {
 
 ################## LATEST AMI's (Standard) ##################
 
-data "aws_ami" "most_recent_cyvive_generic" {
+data "aws_ami" "most_recent_cyvive" {
   most_recent = true
   owners			= ["${local.ami_owner}"]
-	name_regex	= "cyvive-generic"
+	name_regex	= "cyvive-kubernetes"
 }
 
 ################## LATEST AMI's (ENA) ##################
 
-data "aws_ami" "most_recent_cyvive_ena_generic" {
+data "aws_ami" "most_recent_cyvive_ena" {
   most_recent = true
   owners			= ["${local.ami_owner}"]
-	name_regex	= "cyvive-ena-generic"
+	name_regex	= "cyvive-ena-kubernetes"
 }
 
 ################## SECURITY GROUP ##################

@@ -4,35 +4,94 @@ Enterprise Grade Kubernetes Installer
 
 Cluster Resiliancy is extreemly high as masters auto create and recover
 
-Kubernetes v1.12 will futher simplify the installation process, but until then the additional startup node is needed
+## Minimum Steps to activate Cyvive in AWS
 
-## Process
+### Initial Design Considerations
+Cyvive requires the standard enterprise subnet configuration already established, it **DOES NOT** provision or control any Subnet settings automatically.
 
-1. Create a single master to bootstrap a cluster from (executes a script to power-off when 4 etcd nodes are present)
-2. Every other node is a 'pool' type, including running masters
-2. Upload relevant certificates and settings to kubernetes where possible, s3 for the rest
-3. Enable the control plane ASG and join with the respective nodes registering as additonal masters (workers can also be added at this time)
-4. Tear-down and remove initial bootstap node
-5.
+Cyvive can be installed exclusively in a private mode, but doing so will prevent any cluster ingress from a public subnet or internet service and Route53 records will be only added to the private zone.
 
-NestedStacks are perfectly safe when only rolling etcd or kube-api as a block ami, not minute changes
+Images for Cyvive are avilable in 3 ways:
 
-# Subnets
-- Don't use the default subnet in the VPC
-- Minimum /22 for node CDIR range
-- Tag the 'private' subnets with 'Cyvive = Deployable'
-- NAT Gateways should be in the public subnets
-- 3 AZ's are expected for VPC for ETCD n+1
-- NAT gateways should be in the Public Subnets and all Cyvive compute will be in the private subnets
-- Public Subnets only contain ALB / NLB / ELB for traffic into the cluster
-- Tags
-	(Public)
-	- Cyvive "Public"
-	(Private)
-	- Cyvive = "Private"
+1. Official Publically available AMI's
+2. Private AMI's mounted from the Public AMI's S3 images (your responsible for importing them into your cyvive managed bucket and then into AMI's for your consumption)
+3. Custom AMI's extended from Cyvive's core.
 
+Updates in Cyvive are available in one of two approaches:
 
-# BootStrap Notes
+- Rolling Upgrades: Every instance type rolling upgrades to the new version one by one. While the safest approch to companies still understanding Cloud Native Architecture its also relatively slow, and due to the way AWS does Rolling Updates has a higher chance of running out of instances in the region.
+- Batch per Availability Zone: Executes a total teardown of all instances in the Availability Zone and redeploys on demand based on Kubernetes workload schedulling. If applications are Cloud Native then this is the best approach.
 
-- Node creates all the necessary CA certificates, these are watched and synced to the ALB as part of the boot process via Terraform
-- Folder level policies are created for the 3 terraform agents to do their work
+Switching between batch and rolling update modes after the cluster has been deployed requires a total teardown of all pools so its a (Dragons) moment and is strongly suggested to select this up front, choose rolling if unsure about the Cloud Native Architecture in your applications.
+
+### Preparation
+
+**Subnet Settings**:
+
+- Default Subnet is unable to be used for security and resiliancy reasons
+- AWS Region must have 3 Availability Zones with Subnets configured in each (Required for ETCD Stability in event of batch AZ update / failure)
+- VPC **must** have an Internet Gateway Installed. Airgapped Kubernetes (although possible with Cyvive) should be avoided wherever possible
+
+**Private Subnets**:
+
+- Recommended: minimum /20 CIDR in each Availability Zone. Cyvive is designed to handle hundreds of nodes and thousands of containers, its a good idea to ensure it has the capacity to grow with demand early on.
+- *Private* Subnets tagged with: 'Cyvive = Pools'
+
+**Public Subnets**:
+
+- *Public* Subnets tagged with: 'Cyvive = Ingress'
+- NAT Gateway in each Subnet
+
+**Route53**:
+
+- DNS Zone that the cluster will be installed into i.e. redux.k8s should have a public and private record, unless this cluster will be only privately accessed.
+
+**IAM Role**:
+
+- `permissions/aws.json` contains the current recommended permissions to assign Cyvive
+
+### Process
+
+Cyvive uses *Terraform* as this is rapidly becomming the industry standard approach to infrastructure and cloud provisioning. An IAM access and secret key will need to be present in the environment variables of the shell running Terraform or *AWS CLI* used to login and store the access credentials in the home directory for *Terraform* to discover and use.
+
+Logically Cyvive is split into 3 core components.
+
+- initiate: create the required surrounding cloud infrastructure to support Kubernetes, i.e. Load Balancers, S3 Buckets
+- control: Establish and isolate the control plane for stability and upgrades
+- pools: Selection of node resources available for consumption and control via Kubernetes
+
+**Initiate**
+```
+switch to terraform/aws/initiate
+edit the sample terraform.tfvars to meet your environment's requirements
+terraform init && terraform apply --auto-approve
+
+Process will take ~10 minutes largely due to the speed AWS provisions Load Balancers
+```
+
+**Control**
+```
+identify the created config bucket name:
+cat terraform.tfstate | grep -e "bucket\".*cyvive-config"
+
+switch to terraform/aws/control
+edit the sample terraform.tfvars using the s3_config_bucket value discovered above
+terraform init && terraform apply --auto-approve
+
+Kubernetes control plane will be available and the admin kubectl user published to the s3_config_bucket
+```
+Note: At this time, Cyvive users have requested that the control plane is **not** available in HA mode as Cyvive users are stress testing different cluster sizes against the stacked ETCD node, as such HA control plane is disabled and will be re-enabled in a future release. Conversion from single to HA **will not** require a cluster re-install as we use autodiscovery and recovery for ETCD services.
+
+**Pools**
+```
+identify the machine token_id for authorizing nodes to join the cluster
+cat terraform.tfstate | grep -e "token_id.:"
+
+switch to terraform/aws/pools
+edit the sample terraform.tfvars using the s3_config_bucket & token_id.
+terraform init && terraform apply --auto-approve
+
+pools are created, nodes are by default all set to zero until workload is assigned. Change the 'desired' values to reflect the needed nodes of the relevant types
+```
+Note: Expectation is that Kubernetes will control requests for nodes against the pools as part of the ecosystem. The process for managing the extended ecosystem as immutable or restrictively controlled by Kubernetes is being finalized and will be enabled as soon as this approach is finalized and battle tested.
+

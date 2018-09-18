@@ -36,7 +36,7 @@ data "template_file" "terraform_vars" {
 */
 
 resource "aws_instance" "controller_a" {
-	ami													= "${data.aws_ami.most_recent_cyvive_generic.id}"
+	ami													= "${data.aws_ami.most_recent_cyvive.id}"
   instance_type								= "${var.controller_type}"
   key_name										= "${local.ssh_key}"
 	#vpc_security_group_ids			= ["sg-8514c9e0"]

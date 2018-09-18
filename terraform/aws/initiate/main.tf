@@ -10,9 +10,6 @@ locals {
 	is_public_amis				= "${var.s3_private_amis_bucket == "" ? 1 : 0}"
 	ami_owner							= "${var.s3_private_amis_bucket == "" ? "742773893669" : "self"}"
 
-	is_ssh								= "${var.ssh_enabled == "0" ? 0 : 1}"
-	ssh_key								= "${var.ssh_enabled == "0" ? "" : var.ssh_authorized_key}"
-
 	enabled_cidrs					= "${compact(concat(data.aws_subnet.ingress.*.cidr_block, data.aws_subnet.pools.*.cidr_block, var.authorized_external_cidrs))}"
 
 	debug									= "${var.debug == "true" ? 1 : 0}"
@@ -64,17 +61,17 @@ data "aws_route53_zone" "private" {
 
 ################## LATEST AMI's (Standard) ##################
 
-data "aws_ami" "most_recent_cyvive_generic" {
+data "aws_ami" "most_recent_cyvive" {
   most_recent = true
   owners			= ["${local.ami_owner}"]
-	name_regex	= "cyvive-generic"
+	name_regex	= "cyvive-kubernetes"
 }
 
 ################## LATEST AMI's (ENA) ##################
 
-data "aws_ami" "most_recent_cyvive_ena_generic" {
+data "aws_ami" "most_recent_cyvive_ena" {
   most_recent = true
   owners			= ["${local.ami_owner}"]
-	name_regex	= "cyvive-ena-generic"
+	name_regex	= "cyvive-ena-kubernetes"
 }
 
