@@ -133,6 +133,13 @@ variable "vpc_id" {
 	type				= "string"
 }
 
+# Recreate Triggers
+variable "ami_image" {
+	description = "AMI Image to use, if not specified then latest AMI compatible AMI will be used automatically"
+	type				= "string"
+	default			= ""
+}
+
 # CLI (Advanced)
 variable "rename_placement_groups" {
 	description = "(Dragons) Value keys a random renaming of placement groups"

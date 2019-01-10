@@ -16,6 +16,8 @@ locals {
 	debug									= "${var.debug == "true" ? 1 : 0}"
 	debug_subdomain				= "${var.debug == "true" ? "debug." : ""}"
 
+	ami_image							= "${var.ami_image == "" ? data.aws_ami.most_recent_cyvive.id : var.ami_image}"
+
 	name_prefix						=	"cyvive-${var.cluster_name}"
 
 	token_combiner				= "${random_string.tokenA.result}.${random_string.tokenB.result}"
@@ -154,7 +156,6 @@ resource "aws_placement_group" "spread" {
 
 ################## LATEST AMI's (Standard) ##################
 
-# HERER UPDATE everywhere the generic removal
 data "aws_ami" "most_recent_cyvive" {
   most_recent = true
   owners			= ["${local.ami_owner}"]
