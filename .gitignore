@@ -22,5 +22,5 @@ terraform/proto
 terraform/debug
 terraform/tmp
 refactor-aws
-*.swp
+*.sw*
 .nixconfig

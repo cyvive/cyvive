@@ -132,6 +132,7 @@ resource "aws_elb" "control_plane_private" {
 	name									= "${local.name_prefix}-control-private"
   subnets								= ["${data.aws_subnet.pools.*.id}"]
 	internal							= "true"
+	# TODO verify if secondary group is necessary
 	security_groups				= [ "${aws_security_group.intra_cluster.id}" ]
 
 	listener {

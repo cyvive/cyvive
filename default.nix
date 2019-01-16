@@ -25,7 +25,7 @@ let
 
 	aws_shell = pkgs.symlinkJoin {
 		name = "aws_shell";
-		paths = [ pkgs.aws_shell];
+		paths = [ pkgs.aws_shell ];
 		buildInputs =	[ pkgs.makeWrapper ];
 		postBuild = ''
 			mkdir -p ${configPath}

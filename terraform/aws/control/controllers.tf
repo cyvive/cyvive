@@ -17,6 +17,7 @@ data "template_file" "kubeadm" {
 		cluster_domain						= "${var.cluster_domain_suffix}"
 		cluster_fqdn							=	"${local.cluster_fqdn}"
 		debug_subdomain						=	"debug."
+		kubernetes_version				= "${local.kubernetes_version}"
   }
 }
 
@@ -36,7 +37,7 @@ data "template_file" "terraform_vars" {
 */
 
 resource "aws_instance" "controller_a" {
-	ami													= "${var.ami_image}"
+	ami													= "${local.ami_image}"
   instance_type								= "${var.controller_type}"
   key_name										= "${local.ssh_key}"
 	#vpc_security_group_ids			= ["sg-8514c9e0"]

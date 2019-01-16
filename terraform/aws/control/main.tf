@@ -17,6 +17,7 @@ locals {
 	debug_subdomain				= "${var.debug == "true" ? "debug." : ""}"
 
 	ami_image							= "${var.ami_image == "" ? data.aws_ami.most_recent_cyvive.id : var.ami_image}"
+	kubernetes_version		= "${substr("${data.aws_ami.kubernetes_version.name}", -18, 7)}"
 
 	name_prefix						=	"cyvive-${var.cluster_name}"
 
@@ -159,7 +160,10 @@ resource "aws_placement_group" "spread" {
 data "aws_ami" "most_recent_cyvive" {
   most_recent = true
   owners			= ["${local.ami_owner}"]
-	name_regex	= "cyvive-kubernetes"
+	filter {
+		name			= "name"
+		values		= ["cyvive-kubernetes*"]
+	}
 }
 
 ################## LATEST AMI's (ENA) ##################
@@ -167,7 +171,20 @@ data "aws_ami" "most_recent_cyvive" {
 data "aws_ami" "most_recent_cyvive_ena" {
   most_recent = true
   owners			= ["${local.ami_owner}"]
-	name_regex	= "cyvive-ena-kubernetes"
+	filter {
+		name			= "name"
+		values		= ["cyvive-ena-kubernetes*"]
+	}
+}
+
+################## KUBERNETES VERSION ##################
+
+data "aws_ami" "kubernetes_version" {
+	owners			= ["${local.ami_owner}"]
+	filter {
+		name			= "image-id"
+		values		= ["${local.ami_image}"]
+	}
 }
 
 ################## SECURITY GROUP ##################
