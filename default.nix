@@ -72,7 +72,13 @@ in
 	then
 		rec {
 			dev = pkgs.mkShell
-				{ buildInputs = envPkgs ++ devPkgs; };
+			{ buildInputs = envPkgs ++ devPkgs;
+				shellHook = ''
+					export PATH="$PWD/node_modules/.bin/:$PATH"
+					npm i
+					npm audit fix
+				'';
+			};
 			prod = pkgs.mkShell
 			{ buildInputs = envPkgs; };
 		}

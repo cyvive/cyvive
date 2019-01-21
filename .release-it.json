@@ -1,0 +1,55 @@
+{
+  "preReleaseId": null,
+  "use": "git.tag",
+  "scripts": {
+    "beforeStart": null,
+    "beforeBump": null,
+    "afterBump": null,
+    "beforeStage": null,
+    "changelog": "conventional-changelog -p angular | tail -n +3",
+    "afterRelease": null
+  },
+  "git": {
+    "requireCleanWorkingDir": true,
+    "requireUpstream": true,
+    "addUntrackedFiles": false,
+    "commit": false,
+    "commitMessage": "chore: Release ${version}",
+    "tag": true,
+    "tagName": "${version}",
+    "tagArgs": "",
+    "push": true,
+    "pushArgs": "",
+    "pushRepo": "origin"
+  },
+  "npm": {
+    "publish": false
+  },
+  "github": {
+    "release": true,
+    "releaseName": "${version}",
+    "preRelease": false,
+    "draft": false,
+    "tokenRef": "GITHUB_TOKEN",
+    "assets": null,
+    "host": null,
+    "timeout": 0,
+    "proxy": null
+  },
+  "gitlab": {
+    "release": false,
+    "releaseName": "${version}",
+    "releaseNotes": null,
+    "tokenRef": "GITLAB_TOKEN",
+    "assets": null,
+    "origin": null
+  },
+  "prompt": {
+    "commit": false,
+    "tag": true,
+    "push": true,
+    "ghRelease": true,
+    "glRelease": false,
+    "publish": true
+  }
+}
