@@ -17,6 +17,7 @@ let
 		python
 
 		pkgs.terraform
+		pkgs.etcdctl
 	];
 
 	# Create a project relative config directory for storing all external program information

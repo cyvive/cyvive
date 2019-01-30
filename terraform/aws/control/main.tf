@@ -39,6 +39,9 @@ locals {
 				etcd						= {
 					content				=	""
 				},
+				join.yaml				= {
+					content				= "${data.template_file.kubecontrol.rendered}"
+				},
 				/*
 				terraform.tfvars = {
 					content				= "${data.template_file.terraform_vars.rendered}"
@@ -49,17 +52,27 @@ locals {
 				*/
 			}
 		},
+		# <<<< KubeNode should be enabled and identify itself as a master?
+		/*
+		kubenode = {
+			entries = {
+				join = {
+					content = "${data.template_file.kubenode.rendered}"
+				}
+			}
+		},
+		*/
 		cyvive = {
 			entries = {
 				s3config				= {
-					content				= "s3://${var.s3_config_bucket}/kubeadm"
+					content				= "${var.s3_config_bucket}"
 				},
 				cluster.fqdn = {
 					content				=	"${local.cluster_fqdn}"
 				}
 			}
-		},
 		/*
+		},
 		kubelet = {
 			entries = {
 				disabled = {
@@ -69,8 +82,8 @@ locals {
 					content = ""
 				}
 			}
-		}
 		*/
+		}
 	}
 }
 

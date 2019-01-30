@@ -1,22 +1,14 @@
-apiVersion: kubeadm.k8s.io/v1alpha1
-kind: NodeConfiguration
-# caCertPath: <path|string>
-# discoveryFile: <path|string>
-# discoveryToken: ${token_id}
-## APIServers must be a NLB as only one is used by K8's at this time
+apiVersion: kubeadm.k8s.io/v1alpha3
+kind: JoinConfiguration
 discoveryTokenAPIServers:
-- ${bootstrap}
-# nodeName: <string>
-# tlsBootstrapToken: <string>
+- "${cluster_fqdn}:6443"
 token: ${token_id}
-# discoveryTokenCACertHashes:
-# - <SHA-256 hash|string>
+clusterName: ${cluster_name}
 discoveryTokenUnsafeSkipCAVerification: true
 nodeRegistration:
-  criSocket: /run/containerd/containerd.sock
-  # name: your-host-name
+  criSocket: /var/run/containerd/containerd.sock
   taints:
   - effect: NoSchedule
-    key: node-role.kubernetes.io/master
+    key: "node-role.kubernetes.io/master"
 
 

@@ -35,7 +35,7 @@ locals {
 		cyvive = {
 			entries = {
 				s3config				= {
-					content				= "s3://${var.s3_config_bucket}/kubeadm"
+					content				= "${var.s3_config_bucket}"
 				},
 				cluster.fqdn = {
 					content				=	"${local.cluster_fqdn}"

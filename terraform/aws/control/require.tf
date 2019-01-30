@@ -16,12 +16,11 @@ provider "template" {
   version = "~> 1.0"
 }
 
-/*
 provider "null" {
-  version = "~> 1.0"
+  version = "~> 2.0"
 }
 
-
+/*
 provider "tls" {
   version = "~> 1.0"
 }
