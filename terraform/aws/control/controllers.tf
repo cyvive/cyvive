@@ -1,51 +1,14 @@
-################## ETCD DNS ENTRIES ##################
-
-resource "aws_route53_record" "etcda" {
-  zone_id										= "${data.aws_route53_zone.private.id}"
-
-	name											= "etcda-${local.cluster_fqdn}"
-  type											= "CNAME"
-	records	= ["${aws_instance.controller_a.private_dns}"]
-	ttl			= 10
-}
-resource "aws_route53_record" "etcdb" {
-  zone_id										= "${data.aws_route53_zone.private.id}"
-
-	name											= "etcdb-${local.cluster_fqdn}"
-  type											= "CNAME"
-	records	= ["${aws_instance.controller_b.private_dns}"]
-	ttl			= 10
-}
-resource "aws_route53_record" "etcdc" {
-  zone_id										= "${data.aws_route53_zone.private.id}"
-
-	name											= "etcdc-${local.cluster_fqdn}"
-  type											= "CNAME"
-	records	= ["${aws_instance.controller_c.private_dns}"]
-	ttl			= 10
-}
-
-# TODO testing only!!!
-# TODO anti-pattern... enable this as a variable for external etcd access (external backup.. should be disabled by default)
-resource "aws_route53_record" "etcda_public" {
-  zone_id										= "${data.aws_route53_zone.public.id}"
-
-	name											= "etcda-${local.cluster_fqdn}"
-  type											= "CNAME"
-	records	= ["${aws_instance.controller_a.public_dns}"]
-	ttl			= 10
-}
 ################## LOCAL KUBECTL - ADMIN ##################
 resource "null_resource" "controller_a" {
 	triggers = {
-		controller_a_id = "${aws_instance.controller_a.id}"
+		controller_a_id = "${module.az_a.controller_id}"
 	}
 
 	provisioner "local-exec" {
 		command		= "./local-exec/wait-for-admin.sh ${var.s3_config_bucket}"
 	}
 
-	depends_on	= [ "aws_instance.controller_a" ]
+	depends_on	= [ "module.az_a" ]
 }
 
 ################## BOOTSTRAP ##################
@@ -85,114 +48,119 @@ data "template_file" "terraform_vars" {
 }
 */
 
-resource "aws_instance" "controller_a" {
-	ami													= "${local.ami_image}"
-  instance_type								= "${var.controller_type}"
-  key_name										= "${local.ssh_key}"
-	vpc_security_group_ids			= [ "${data.aws_security_group.intra_cluster.id}",
-																	"${data.aws_security_group.controllers.id}" ]
-	subnet_id										= "${data.aws_subnet.a.id}"
-  associate_public_ip_address = true
-	ebs_block_device {
-		device_name								= "/dev/sdb"
-		volume_size								= "${var.oci_cache_disk_size}"
-		volume_type								=	"${var.oci_cache_disk_type}"
-		iops											= "${var.oci_cache_disk_iops}"
-		encrypted									= true
-	}
-	iam_instance_profile				= "${data.aws_iam_instance_profile.controller.name}"
-	tags = {
-		Name	= "${local.name_prefix}-control-a"
-	}
-	user_data_base64 = "${base64encode(jsonencode(local.init_controller))}"
+################## CONTROL INSTANCES ##################
+
+module "az_a" {
+	source	= "controller"
+
+	az											= "a"
+
+	iam_instance_profile		= "${data.aws_iam_instance_profile.controller.name}"
+	lb_dashboard						= "${data.aws_lb_target_group.controllers_dashboard_http.arn}"
+	lb_dashboard_https			= "${data.aws_lb_target_group.controllers_dashboard_https.arn}"
+	lb_healthz							= "${data.aws_elb.healthz.id}"
+	lb_private							= "${data.aws_elb.control_plane_private.id}"
+	lb_public								= "${data.aws_lb_target_group.controllers_public.arn}"
+	pet_placement						=	"${element(aws_placement_group.spread.*.name, 0)}"
+	subnet_id								= "${data.aws_subnet.a.id}"
+	zone_id_private					= "${data.aws_route53_zone.private.id}"
+	zone_id_public					= "${data.aws_route53_zone.public.id}"
+
+	security_groups					= [ "${data.aws_security_group.intra_cluster.id}",
+															"${data.aws_security_group.controllers.id}" ]
+
+	# Direct Map of Locals
+	cluster_fqdn						= "${local.cluster_fqdn}"
+	debug										= "${local.debug}"
+	image_id								= "${local.ami_image}"
+	instance_type 					=	"${local.instance_type}"
+	is_public_cluster				= "${local.is_public_cluster}"
+	name_prefix							= "${local.name_prefix}"
+	ssh_key									= "${local.ssh_key}"
+
+	# Direct Map from Variables
+	cluster_name						= "${var.cluster_name}"
+	oci_cache_disk_size			= "${var.oci_cache_disk_size}"
+	oci_cache_disk_type			= "${var.oci_cache_disk_type}"
+
+  #tags										= "${map("Name", "${local.name_prefix}-controllers")}"
+
+	user_data_base64				= "${base64encode(jsonencode(local.init_controller))}"
 }
 
-resource "aws_instance" "controller_b" {
-	ami													= "${local.ami_image}"
-  instance_type								= "${var.controller_type}"
-  key_name										= "${local.ssh_key}"
-	vpc_security_group_ids			= [ "${data.aws_security_group.intra_cluster.id}",
-																	"${data.aws_security_group.controllers.id}" ]
-	subnet_id										= "${data.aws_subnet.b.id}"
-  associate_public_ip_address = true
-	ebs_block_device {
-		device_name								= "/dev/sdb"
-		volume_size								= "${var.oci_cache_disk_size}"
-		volume_type								=	"${var.oci_cache_disk_type}"
-		iops											= "${var.oci_cache_disk_iops}"
-		encrypted									= true
-	}
-	iam_instance_profile				= "${data.aws_iam_instance_profile.controller.name}"
-	tags = {
-		Name	= "${local.name_prefix}-control-b"
-	}
-	user_data_base64 = "${base64encode(jsonencode(local.init_controller))}"
+module "az_b" {
+	source	= "controller"
 
-	#depends_on			 = [ "null_resource.controller_a" ]
+	az											= "b"
+
+	iam_instance_profile		= "${data.aws_iam_instance_profile.controller.name}"
+	lb_dashboard						= "${data.aws_lb_target_group.controllers_dashboard_http.arn}"
+	lb_dashboard_https			= "${data.aws_lb_target_group.controllers_dashboard_https.arn}"
+	lb_healthz							= "${data.aws_elb.healthz.id}"
+	lb_private							= "${data.aws_elb.control_plane_private.id}"
+	lb_public								= "${data.aws_lb_target_group.controllers_public.arn}"
+	pet_placement						=	"${element(aws_placement_group.spread.*.name, 1)}"
+	subnet_id								= "${data.aws_subnet.b.id}"
+	zone_id_private					= "${data.aws_route53_zone.private.id}"
+	zone_id_public					= "${data.aws_route53_zone.public.id}"
+
+	security_groups					= [ "${data.aws_security_group.intra_cluster.id}",
+															"${data.aws_security_group.controllers.id}" ]
+
+	# Direct Map of Locals
+	cluster_fqdn						= "${local.cluster_fqdn}"
+	debug										= "${local.debug}"
+	image_id								= "${local.ami_image}"
+	instance_type 					=	"${local.instance_type}"
+	is_public_cluster				= "${local.is_public_cluster}"
+	name_prefix							= "${local.name_prefix}"
+	ssh_key									= "${local.ssh_key}"
+
+	# Direct Map from Variables
+	cluster_name						= "${var.cluster_name}"
+	oci_cache_disk_size			= "${var.oci_cache_disk_size}"
+	oci_cache_disk_type			= "${var.oci_cache_disk_type}"
+
+  #tags										= "${map("Name", "${local.name_prefix}-controllers")}"
+
+	user_data_base64				= "${base64encode(jsonencode(local.init_controller))}"
 }
 
-resource "aws_instance" "controller_c" {
-	ami													= "${local.ami_image}"
-  instance_type								= "${var.controller_type}"
-  key_name										= "${local.ssh_key}"
-	vpc_security_group_ids			= [ "${data.aws_security_group.intra_cluster.id}",
-																	"${data.aws_security_group.controllers.id}" ]
-	subnet_id										= "${data.aws_subnet.c.id}"
-  associate_public_ip_address = true
-	ebs_block_device {
-		device_name								= "/dev/sdb"
-		volume_size								= "${var.oci_cache_disk_size}"
-		volume_type								=	"${var.oci_cache_disk_type}"
-		iops											= "${var.oci_cache_disk_iops}"
-		encrypted									= true
-	}
-	iam_instance_profile				= "${data.aws_iam_instance_profile.controller.name}"
-	tags = {
-		Name	= "${local.name_prefix}-control-c"
-	}
-	user_data_base64 = "${base64encode(jsonencode(local.init_controller))}"
+module "az_c" {
+	source	= "controller"
 
-	#depends_on			 = [ "null_resource.controller_a" ]
-}
+	az											= "c"
 
-# Attach controller instances to apiserver NLB
-resource "aws_lb_target_group_attachment" "controller_a_public" {
-	count							= "${local.is_public_cluster}"
-  target_group_arn	= "${data.aws_lb_target_group.controllers_public.arn}"
-  target_id					= "${aws_instance.controller_a.id}"
-}
+	iam_instance_profile		= "${data.aws_iam_instance_profile.controller.name}"
+	lb_dashboard						= "${data.aws_lb_target_group.controllers_dashboard_http.arn}"
+	lb_dashboard_https			= "${data.aws_lb_target_group.controllers_dashboard_https.arn}"
+	lb_healthz							= "${data.aws_elb.healthz.id}"
+	lb_private							= "${data.aws_elb.control_plane_private.id}"
+	lb_public								= "${data.aws_lb_target_group.controllers_public.arn}"
+	pet_placement						=	"${element(aws_placement_group.spread.*.name, 2)}"
+	subnet_id								= "${data.aws_subnet.c.id}"
+	zone_id_private					= "${data.aws_route53_zone.private.id}"
+	zone_id_public					= "${data.aws_route53_zone.public.id}"
 
-resource "aws_lb_target_group_attachment" "controller_a_dashboard" {
-	count							= "${local.is_public_cluster}"
-  target_group_arn	= "${data.aws_lb_target_group.controllers_dashboard_http.arn}"
-  target_id					= "${aws_instance.controller_a.id}"
-}
+	security_groups					= [ "${data.aws_security_group.intra_cluster.id}",
+															"${data.aws_security_group.controllers.id}" ]
 
-resource "aws_lb_target_group_attachment" "controller_a_dashboard_https" {
-	count							= "${local.is_public_cluster}"
-  target_group_arn	= "${data.aws_lb_target_group.controllers_dashboard_https.arn}"
-  target_id					= "${aws_instance.controller_a.id}"
-}
+	# Direct Map of Locals
+	cluster_fqdn						= "${local.cluster_fqdn}"
+	debug										= "${local.debug}"
+	image_id								= "${local.ami_image}"
+	instance_type 					=	"${local.instance_type}"
+	is_public_cluster				= "${local.is_public_cluster}"
+	name_prefix							= "${local.name_prefix}"
+	ssh_key									= "${local.ssh_key}"
 
-resource "aws_elb_attachment" "controller_a_private" {
-	elb				= "${data.aws_elb.control_plane_private.id}"
-	instance	= "${aws_instance.controller_a.id}"
-}
+	# Direct Map from Variables
+	cluster_name						= "${var.cluster_name}"
+	oci_cache_disk_size			= "${var.oci_cache_disk_size}"
+	oci_cache_disk_type			= "${var.oci_cache_disk_type}"
 
-resource "aws_elb_attachment" "controller_a_healthz" {
-	elb				= "${data.aws_elb.healthz.id}"
-	instance	= "${aws_instance.controller_a.id}"
-}
+  #tags										= "${map("Name", "${local.name_prefix}-controllers")}"
 
-resource "aws_elb_attachment" "debug_private" {
-	count			= "${local.debug}"
-	elb				= "${data.aws_elb.debug_private.id}"
-	instance	= "${aws_instance.controller_a.id}"
-}
-
-resource "aws_elb_attachment" "debug_public" {
-	count			= "${local.debug}"
-	elb				= "${data.aws_elb.debug_public.id}"
-	instance	= "${aws_instance.controller_a.id}"
+	user_data_base64				= "${base64encode(jsonencode(local.init_controller))}"
 }
 

@@ -17,6 +17,7 @@ locals {
 	debug_subdomain				= "${var.debug == "true" ? "debug." : ""}"
 
 	ami_image							= "${var.ami_image == "" ? data.aws_ami.most_recent_cyvive.id : var.ami_image}"
+	instance_type					= "${var.controller_type}"
 	kubernetes_version		= "${substr("${data.aws_ami.kubernetes_version.name}", -18, 7)}"
 
 	name_prefix						=	"cyvive-${var.cluster_name}"
@@ -247,16 +248,6 @@ data "aws_elb" "healthz" {
 
 data "aws_elb" "control_plane_private" {
 	name									= "${local.name_prefix}-control-private"
-}
-
-data "aws_elb" "debug_private" {
-	count									=	"${local.debug}"
-	name									= "${local.name_prefix}-debug-private"
-}
-
-data "aws_elb" "debug_public" {
-	count									=	"${local.debug * local.is_public_cluster}"
-	name									= "${local.name_prefix}-debug-public"
 }
 
 ################## S3 BUCKETS ##################

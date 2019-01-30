@@ -38,20 +38,8 @@ variable "cluster_domain_suffix" {
 
 variable "controller_type" {
   type        = "string"
-  default     = "c5.large"
+  default     = "m5d.large"
   description = "EC2 instance type for controllers"
-}
-
-variable "pool_type" {
-  type        = "string"
-  default     = "c5.large"
-  description = "EC2 instance type for pools"
-}
-
-variable "pool_maximum_size" {
-	type				= "string"
-	default			=	"5"
-	description	=	"Maximum Size of All Pools"
 }
 
 # Storage

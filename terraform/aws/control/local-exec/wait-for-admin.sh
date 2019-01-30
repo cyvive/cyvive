@@ -6,12 +6,12 @@ aws s3api wait object-exists --bucket $1 --key kubeadm/.kubeadm-init.sh-started
 
 
 if aws s3api wait object-exists --bucket $1 --key kubeadm/admin.conf; then
-	aws s3api get-object --bucket $1 --key kubeadm/admin.conf ../../../.nixconfig/kubectl
+	aws s3api get-object --bucket $1 --key control/admin.conf ../../../.nixconfig/kubectl
 	declare -a arr=("ca.crt" "healthcheck-client.crt" "healthcheck-client.key")
 	mkdir -p ../../../.nixconfig/etcd
 	for file in "${arr[@]}"
 	do
-		aws s3api get-object --bucket $1 --key kubeadm/az/a/etcd/$file ../../../.nixconfig/etcd/$file
+		aws s3api get-object --bucket $1 --key control/az/a/etcd/$file ../../../.nixconfig/etcd/$file
 	done
 else
 	echo 'kubernetes admin.conf timed out in S3 cluster config bucket'

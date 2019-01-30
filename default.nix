@@ -18,6 +18,7 @@ let
 
 		pkgs.terraform
 		pkgs.etcdctl
+		pkgs.rclone
 	];
 
 	# Create a project relative config directory for storing all external program information
