@@ -37,4 +37,12 @@ resource "aws_autoscaling_group" "per_instance" {
 	load_balancers						= ["${var.elb_names}"]
 	vpc_zone_identifier				= ["${var.subnet_id}"]
 	termination_policies			= [ "OldestLaunchConfiguration", "ClosestToNextInstanceHour" ]
+
+	tags = [
+		{
+			key										= "cyvive"
+			value									= "${var.cluster_name}"
+			propagate_at_launch		= true
+		}
+	]
 }
